@@ -1,0 +1,281 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Oswald:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Taco Bell Brand Colors */
+  --taco-purple: #451551;
+  --taco-purple-light: #6B2C7A;
+  --taco-magenta: #9D1F60;
+  --taco-pink: #D71A64;
+  --taco-orange: #F58220;
+  --taco-yellow: #FFC600;
+  --taco-cream: #FFF8E7;
+  --taco-black: #1A0A1F;
+  --taco-white: #FFFFFF;
+  
+  /* Professional Drive-Through UI System */
+  --dt-bg-primary: #0F0514;
+  --dt-bg-secondary: #1A0D24;
+  --dt-bg-card: rgba(69, 21, 81, 0.3);
+  --dt-border: rgba(157, 31, 96, 0.3);
+  
+  /* Accent Gradients */
+  --gradient-primary: linear-gradient(135deg, var(--taco-purple) 0%, var(--taco-magenta) 50%, var(--taco-pink) 100%);
+  --gradient-accent: linear-gradient(135deg, var(--taco-orange) 0%, var(--taco-yellow) 100%);
+  --gradient-glow: radial-gradient(ellipse at center, rgba(255, 198, 0, 0.15) 0%, transparent 70%);
+  
+  /* Typography */
+  --font-display: 'Oswald', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  
+  /* Spacing Scale */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-glow: 0 0 40px rgba(255, 198, 0, 0.3);
+  --shadow-glow-pink: 0 0 40px rgba(215, 26, 100, 0.4);
+  
+  /* Animation */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-cubic: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    font-family: var(--font-body);
+    background: var(--dt-bg-primary);
+    color: var(--taco-white);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+}
+
+@layer components {
+  /* Drive-Through UI Components */
+  .dt-card {
+    background: var(--dt-bg-card);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--dt-border);
+    border-radius: 1rem;
+    transition: all var(--duration-normal) var(--ease-out-expo);
+  }
+  
+  .dt-card:hover {
+    border-color: rgba(157, 31, 96, 0.5);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .dt-button-primary {
+    background: var(--gradient-accent);
+    color: var(--taco-purple);
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 1rem 2rem;
+    border-radius: 0.75rem;
+    border: none;
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out-expo);
+    box-shadow: 0 4px 14px rgba(245, 130, 32, 0.4);
+  }
+  
+  .dt-button-primary:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: var(--shadow-glow);
+  }
+  
+  .dt-button-primary:active {
+    transform: translateY(0) scale(0.98);
+  }
+  
+  .dt-button-secondary {
+    background: transparent;
+    color: var(--taco-white);
+    font-family: var(--font-display);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 1rem 2rem;
+    border-radius: 0.75rem;
+    border: 2px solid var(--taco-magenta);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out-expo);
+  }
+  
+  .dt-button-secondary:hover {
+    background: var(--taco-magenta);
+    border-color: var(--taco-pink);
+  }
+  
+  .dt-input {
+    background: var(--dt-bg-secondary);
+    border: 1px solid var(--dt-border);
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    color: var(--taco-white);
+    font-family: var(--font-body);
+    transition: all var(--duration-fast) var(--ease-out-expo);
+  }
+  
+  .dt-input:focus {
+    outline: none;
+    border-color: var(--taco-orange);
+    box-shadow: 0 0 0 3px rgba(245, 130, 32, 0.2);
+  }
+  
+  .dt-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--gradient-primary);
+    border-radius: 2rem;
+    font-family: var(--font-display);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  /* Voice Interface */
+  .voice-pulse {
+    animation: voicePulse 2s ease-in-out infinite;
+  }
+  
+  @keyframes voicePulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(255, 198, 0, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 20px rgba(255, 198, 0, 0);
+    }
+  }
+  
+  .voice-wave-bar {
+    animation: voiceWave 1s ease-in-out infinite;
+  }
+  
+  @keyframes voiceWave {
+    0%, 100% { transform: scaleY(0.3); }
+    50% { transform: scaleY(1); }
+  }
+  
+  /* Menu Item Card */
+  .menu-item-card {
+    position: relative;
+    background: linear-gradient(145deg, rgba(69, 21, 81, 0.4) 0%, rgba(26, 13, 36, 0.6) 100%);
+    border: 1px solid rgba(157, 31, 96, 0.2);
+    border-radius: 1.25rem;
+    overflow: hidden;
+    transition: all var(--duration-normal) var(--ease-out-expo);
+  }
+  
+  .menu-item-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--gradient-primary);
+    opacity: 0;
+    transition: opacity var(--duration-normal);
+  }
+  
+  .menu-item-card:hover {
+    border-color: var(--taco-orange);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-glow);
+  }
+  
+  .menu-item-card:hover::before {
+    opacity: 0.1;
+  }
+  
+  /* Cart Drawer */
+  .cart-drawer {
+    background: linear-gradient(180deg, var(--dt-bg-primary) 0%, var(--taco-purple) 200%);
+    border-left: 1px solid var(--dt-border);
+  }
+  
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: var(--dt-bg-secondary);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: var(--taco-magenta);
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--taco-pink);
+  }
+  
+  /* Reduced Motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    background: var(--gradient-accent);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .bg-gradient-radial {
+    background: var(--gradient-glow);
+  }
+  
+  .backdrop-blur-strong {
+    backdrop-filter: blur(40px);
+  }
+  
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
