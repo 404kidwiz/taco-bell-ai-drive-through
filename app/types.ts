@@ -13,12 +13,21 @@ export interface CartItem extends MenuItem {
   quantity: number;
 }
 
-export type OrderState = 
-  | "idle" 
-  | "greeting" 
-  | "ordering" 
-  | "confirming" 
+export type OrderState =
+  | "idle"
+  | "greeting"
+  | "ordering"
+  | "confirming"
   | "completed";
+
+export interface Order {
+  id: string;
+  orderNumber: number;
+  items: CartItem[];
+  specialInstructions: string;
+  status: "pending" | "in-progress" | "completed";
+  createdAt: string;
+}
 
 export interface VoiceMessage {
   role: "user" | "assistant";

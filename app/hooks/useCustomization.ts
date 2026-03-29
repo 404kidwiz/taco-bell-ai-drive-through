@@ -130,6 +130,7 @@ export function useCustomization() {
     customizedItems,
     getCustomizations,
     toggleCustomization,
+    setBasePrice,
     getItemPrice,
     getItemCustomizations,
     openCustomization,

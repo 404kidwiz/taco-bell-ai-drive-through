@@ -183,9 +183,9 @@ export const MENU_ITEMS: MenuItem[] = [
 export const CATEGORY_ORDER = ["tacos", "burritos", "specialties", "sides", "drinks"];
 
 export const CATEGORY_LABELS: Record<string, string> = {
-  tacos: "🌮 Tacos",
-  burritos: "🌯 Burritos",
-  specialties: "⭐ Specialties",
-  sides: "🍟 Sides",
-  drinks: "🥤 Drinks"
+  tacos: "Tacos",
+  burritos: "Burritos",
+  specialties: "Specialties",
+  sides: "Sides",
+  drinks: "Drinks"
 };
