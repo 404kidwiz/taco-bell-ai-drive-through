@@ -25,8 +25,10 @@ export interface Order {
   orderNumber: number;
   items: CartItem[];
   specialInstructions: string;
+  customerPhone?: string;
   status: "pending" | "in-progress" | "completed";
   createdAt: string;
+  updatedAt: number;
 }
 
 export interface VoiceMessage {

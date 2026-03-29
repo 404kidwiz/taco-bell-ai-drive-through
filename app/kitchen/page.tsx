@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Clock,
@@ -9,9 +9,8 @@ import {
   AlertTriangle,
   Volume2,
   VolumeX,
-  RotateCcw,
 } from "lucide-react";
-import type { CartItem, Order } from "../types";
+import type { Order } from "../types";
 import Nav from "../../components/Nav";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -52,12 +51,12 @@ function playNewOrderChime() {
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
-function getOrderAgeMinutes(iso: string): number {
-  return Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+function getOrderAgeMinutes(timestamp: number): number {
+  return Math.floor((Date.now() - timestamp) / 60000);
 }
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-US", {
+function formatTime(timestamp: number): string {
+  return new Date(timestamp).toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
@@ -68,13 +67,11 @@ function formatTime(iso: string): string {
 function AmbientBackground() {
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-      {/* Grid */}
       <div className="absolute inset-0" style={{
         backgroundImage: "linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)",
         backgroundSize: "64px 64px",
       }} />
 
-      {/* Purple orb */}
       <motion.div
         className="absolute top-0 left-1/4 w-[500px] h-[500px] rounded-full"
         style={{ background: "radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%)" }}
@@ -82,7 +79,6 @@ function AmbientBackground() {
         transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
       />
 
-      {/* Orange orb */}
       <motion.div
         className="absolute bottom-0 right-1/4 w-[450px] h-[450px] rounded-full"
         style={{ background: "radial-gradient(circle, rgba(255,107,53,0.1) 0%, transparent 70%)" }}
@@ -90,7 +86,6 @@ function AmbientBackground() {
         transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 5 }}
       />
 
-      {/* Noise texture */}
       <div className="absolute inset-0 opacity-[0.03]" style={{
         backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
         backgroundRepeat: "repeat",
@@ -105,7 +100,7 @@ function OrderCard({ order, onUpdateStatus }: {
   order: Order;
   onUpdateStatus: (id: string, status: Order["status"]) => void;
 }) {
-  const ageMin = getOrderAgeMinutes(order.createdAt);
+  const ageMin = getOrderAgeMinutes(order.updatedAt);
   const isUrgent = ageMin >= 20;
   const isWarning = ageMin >= 15;
   const itemsTotal = order.items.reduce((s, i) => s + i.price * i.quantity, 0);
@@ -141,7 +136,6 @@ function OrderCard({ order, onUpdateStatus }: {
         ...getCardGlow(),
       }}
     >
-      {/* Background glow for urgent */}
       {isUrgent && (
         <motion.div
           className="absolute inset-0 pointer-events-none rounded-[1.25rem]"
@@ -151,7 +145,6 @@ function OrderCard({ order, onUpdateStatus }: {
         />
       )}
 
-      {/* Order number & time */}
       <div className="flex items-start justify-between mb-4">
         <div>
           <motion.p
@@ -162,7 +155,7 @@ function OrderCard({ order, onUpdateStatus }: {
             #{order.orderNumber}
           </motion.p>
           <p className="text-sm mt-1.5" style={{ color: C.muted }}>
-            {formatTime(order.createdAt)}
+            {formatTime(order.updatedAt)}
           </p>
         </div>
 
@@ -186,7 +179,6 @@ function OrderCard({ order, onUpdateStatus }: {
         </span>
       </div>
 
-      {/* Age warning */}
       {(isWarning || isUrgent) && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
@@ -204,7 +196,6 @@ function OrderCard({ order, onUpdateStatus }: {
         </motion.div>
       )}
 
-      {/* Items */}
       <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
         {order.items.map((item, idx) => (
           <div key={idx} className="flex justify-between items-start py-1.5" style={{ borderBottom: "1px solid var(--border)" }}>
@@ -222,7 +213,6 @@ function OrderCard({ order, onUpdateStatus }: {
         ))}
       </div>
 
-      {/* Special instructions */}
       {order.specialInstructions && (
         <div className="mb-4 p-2.5 rounded-lg" style={{ background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.4)" }}>
           <p className="text-xs font-bold uppercase tracking-wider mb-0.5" style={{ color: C.warning }}>Special Instructions</p>
@@ -230,13 +220,11 @@ function OrderCard({ order, onUpdateStatus }: {
         </div>
       )}
 
-      {/* Total */}
       <div className="flex justify-between items-center pt-3 mb-4" style={{ borderTop: "2px solid var(--border)" }}>
         <span className="text-sm font-medium" style={{ color: C.muted }}>Total</span>
         <span className="text-xl font-black gradient-text-fire">${grandTotal.toFixed(2)}</span>
       </div>
 
-      {/* Action buttons */}
       <div className="grid grid-cols-2 gap-2">
         {order.status === "pending" && (
           <>
@@ -310,72 +298,106 @@ function SoundToggle({ enabled, onToggle }: { enabled: boolean; onToggle: () => 
 
 // ─── Main Kitchen Page ──────────────────────────────────────────────────────────
 export default function KitchenPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [seenOrderIds, setSeenOrderIds] = useState<Set<string>>(new Set());
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [pendingOrders, setPendingOrders] = useState<Order[]>([]);
+  const [completedOrders, setCompletedOrders] = useState<Order[]>([]);
+  const [seenOrderIds, setSeenOrderIds] = useState<Set<string>>(new Set());
+  const [isLoading, setIsLoading] = useState(true);
   const prevPendingCount = useRef(0);
+  const esRef = useRef<EventSource | null>(null);
 
-  const loadOrders = useCallback(() => {
+  // ─── Load orders from API ──────────────────────────────────────────────────
+  const loadOrders = useCallback(async () => {
     try {
-      const stored = localStorage.getItem("taco-bell-orders");
-      if (stored) {
-        const parsed: Order[] = JSON.parse(stored);
-        parsed.forEach((order) => {
-          if (!seenOrderIds.has(order.id) && order.status !== "completed" && soundEnabled) {
-            playNewOrderChime();
-          }
-        });
-        const newIds = parsed.filter(o => o.status !== "completed").map(o => o.id);
-        setSeenOrderIds((prev) => new Set([...prev, ...newIds]));
-        setOrders(parsed);
+      const [activeRes, completedRes] = await Promise.all([
+        fetch("/api/orders"),
+        fetch("/api/orders/history"),
+      ]);
+      if (activeRes.ok) {
+        const data = await activeRes.json();
+        setPendingOrders(data.orders ?? []);
       }
-    } catch { /* noop */ }
-  }, [seenOrderIds, soundEnabled]);
+      if (completedRes.ok) {
+        const data = await completedRes.json();
+        setCompletedOrders(data.orders ?? []);
+      }
+    } catch {
+      // Network error — keep showing stale data
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
+  // ─── SSE real-time subscription ──────────────────────────────────────────
   useEffect(() => {
+    // Initial load
     loadOrders();
 
-    // Real-time updates via BroadcastChannel
-    const channel = new BroadcastChannel("taco-bell-orders");
-    channel.onmessage = (e) => {
-      if (e.data.type === "ORDER_PLACED") {
-        loadOrders();
+    // SSE stream — kitchen display subscribes to live order events
+    const es = new EventSource("/api/orders/stream");
+    esRef.current = es;
+
+    es.onmessage = (e) => {
+      try {
+        const event = JSON.parse(e.data);
+        if (event.type === "new" || event.type === "update") {
+          loadOrders();
+        }
+      } catch {
+        // Ignore parse errors
       }
     };
 
-    // Fallback polling every 30s for tab refresh scenarios
-    intervalRef.current = setInterval(loadOrders, 30000);
+    es.onerror = () => {
+      // Reconnect automatically via browser EventSource
+    };
 
     return () => {
-      channel.close();
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      es.close();
+      esRef.current = null;
     };
   }, [loadOrders]);
 
-  // Flash tab title on new orders
+  // ─── Play chime for new orders ─────────────────────────────────────────────
   useEffect(() => {
-    const pending = orders.filter((o) => o.status !== "completed").length;
-    if (pending > prevPendingCount.current && pending > 0) {
-      document.title = `(${pending}) Kitchen Display — Taco Bell AI`;
+    const newIds = pendingOrders
+      .filter((o) => !seenOrderIds.has(o.id))
+      .map((o) => o.id);
+
+    if (newIds.length > 0 && soundEnabled) {
+      playNewOrderChime();
+      setSeenOrderIds((prev) => new Set([...prev, ...newIds]));
+    }
+  }, [pendingOrders, seenOrderIds, soundEnabled]);
+
+  // ─── Flash tab title on new orders ─────────────────────────────────────────
+  useEffect(() => {
+    const count = pendingOrders.length;
+    if (count > prevPendingCount.current && count > 0) {
+      document.title = `(${count}) Kitchen Display — Taco Bell AI`;
       const t = setTimeout(() => {
         document.title = "Kitchen Display — Taco Bell AI";
       }, 3000);
       return () => clearTimeout(t);
     }
-    prevPendingCount.current = pending;
-  }, [orders]);
+    prevPendingCount.current = count;
+  }, [pendingOrders]);
 
-  const updateOrderStatus = (orderId: string, newStatus: Order["status"]) => {
-    const updated = orders.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o));
-    setOrders(updated);
+  // ─── Update order status via API ──────────────────────────────────────────
+  const handleUpdateStatus = async (orderId: string, newStatus: Order["status"]) => {
     try {
-      localStorage.setItem("taco-bell-orders", JSON.stringify(updated));
-    } catch { /* noop */ }
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        await loadOrders();
+      }
+    } catch {
+      // silently fail
+    }
   };
-
-  const pendingOrders = orders.filter((o) => o.status !== "completed");
-  const completedOrders = orders.filter((o) => o.status === "completed");
 
   return (
     <div className="min-h-screen" style={{ background: "var(--void)" }}>
@@ -423,7 +445,7 @@ export default function KitchenPage() {
                 animate={{ scale: 1, color: C.yellow }}
                 className="text-4xl font-black"
               >
-                {pendingOrders.length}
+                {isLoading ? "—" : pendingOrders.length}
               </motion.p>
             </div>
           </div>
@@ -444,7 +466,17 @@ export default function KitchenPage() {
             </span>
           </div>
 
-          {pendingOrders.length === 0 ? (
+          {isLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {[...Array(4)].map((_, i) => (
+                <div
+                  key={i}
+                  className="h-52 rounded-2xl animate-pulse"
+                  style={{ background: "var(--glass)", border: "1px solid var(--border)" }}
+                />
+              ))}
+            </div>
+          ) : pendingOrders.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -481,7 +513,7 @@ export default function KitchenPage() {
                       damping: 22,
                     }}
                   >
-                    <OrderCard order={order} onUpdateStatus={updateOrderStatus} />
+                    <OrderCard order={order} onUpdateStatus={handleUpdateStatus} />
                   </motion.div>
                 ))}
               </AnimatePresence>
@@ -490,7 +522,7 @@ export default function KitchenPage() {
         </section>
 
         {/* ─── COMPLETED ORDERS ────────────────────────────────────────────── */}
-        {completedOrders.length > 0 && (
+        {!isLoading && completedOrders.length > 0 && (
           <section>
             <div className="flex items-center gap-2 mb-5">
               <CheckCircle className="w-5 h-5" style={{ color: C.dim }} />
@@ -506,7 +538,7 @@ export default function KitchenPage() {
             </div>
 
             <div className="flex gap-3 overflow-x-auto pb-2">
-              {completedOrders.slice(-12).reverse().map((order) => (
+              {completedOrders.map((order) => (
                 <motion.div
                   key={order.id}
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -519,11 +551,11 @@ export default function KitchenPage() {
                     border: "1px solid var(--border)",
                     borderRadius: "1rem",
                   }}
-                  onClick={() => updateOrderStatus(order.id, "pending")}
+                  onClick={() => handleUpdateStatus(order.id, "pending")}
                   title="Click to restore"
                 >
                   <p className="font-black text-2xl text-white">#{order.orderNumber}</p>
-                  <p className="text-xs mt-1" style={{ color: C.dim }}>{formatTime(order.createdAt)}</p>
+                  <p className="text-xs mt-1" style={{ color: C.dim }}>{formatTime(order.updatedAt)}</p>
                   <p className="text-[10px] mt-1 font-medium" style={{ color: C.green }}>Done</p>
                 </motion.div>
               ))}
@@ -532,7 +564,7 @@ export default function KitchenPage() {
         )}
       </div>
 
-      {/* Auto-refresh indicator */}
+      {/* Real-time indicator */}
       <div className="fixed bottom-4 right-4 flex items-center gap-2 text-xs z-50" style={{ color: C.dim }}>
         <motion.span
           animate={{ opacity: [1, 0.3, 1] }}
@@ -540,7 +572,7 @@ export default function KitchenPage() {
           className="w-2 h-2 rounded-full"
           style={{ background: C.green }}
         />
-        Auto-refresh
+        Live via SSE
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Bebas_Neue } from "next/font/google";
 import "./globals.css";
 import ClientInit from "./ClientInit";
+import { Providers } from "./providers";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -27,8 +28,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="bg-[var(--void)]">
       <body className={`${inter.variable} ${bebasNeue.variable} font-sans antialiased bg-[var(--void)]`}>
-        <ClientInit />
-        {children}
+        <Providers>
+          <ClientInit />
+          {children}
+        </Providers>
       </body>
     </html>
   );

@@ -1,145 +1,91 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import type { Order } from "../types";
 
-interface OrderStatus {
-  id: string;
-  status: "received" | "preparing" | "ready" | "completed";
-  estimatedTime: number; // minutes
-  items: string[];
-  total: number;
-  timestamp: number;
-  updates: OrderUpdate[];
-}
-
-interface OrderUpdate {
-  status: OrderStatus["status"];
-  message: string;
-  timestamp: number;
-}
+const API_BASE = "/api";
 
 export function useOrderTracking() {
-  const [activeOrders, setActiveOrders] = useState<OrderStatus[]>([]);
-  const [orderHistory, setOrderHistory] = useState<OrderStatus[]>([]);
+  // ─── Fetch helpers ──────────────────────────────────────────────────────────
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem("tacoOrders");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setActiveOrders(parsed.activeOrders || []);
-        setOrderHistory(parsed.orderHistory || []);
-      } catch (e) {
-        console.error("Failed to load orders:", e);
-      }
+  async function loadActiveOrders(): Promise<Order[]> {
+    try {
+      const res = await fetch(`${API_BASE}/orders`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.orders ?? []).map(mapOrder);
+    } catch {
+      return [];
     }
-  }, []);
+  }
 
-  // Save to localStorage when orders change
-  useEffect(() => {
-    localStorage.setItem("tacoOrders", JSON.stringify({
-      activeOrders,
-      orderHistory,
-    }));
-  }, [activeOrders, orderHistory]);
+  async function loadCompletedOrders(limit = 50): Promise<Order[]> {
+    try {
+      const res = await fetch(`${API_BASE}/orders/history`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.orders ?? []).slice(0, limit).map(mapOrder);
+    } catch {
+      return [];
+    }
+  }
 
-  const createOrder = useCallback((items: string[], total: number): OrderStatus => {
-    const order: OrderStatus = {
-      id: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
-      status: "received",
-      estimatedTime: 15,
-      items,
-      total,
-      timestamp: Date.now(),
-      updates: [
-        {
-          status: "received",
-          message: "Order received! We're getting it started.",
-          timestamp: Date.now(),
-        },
-      ],
-    };
-
-    setActiveOrders(prev => [order, ...prev]);
-    return order;
-  }, []);
-
-  const updateOrderStatus = useCallback((orderId: string, newStatus: OrderStatus["status"]) => {
-    setActiveOrders(prev => {
-      return prev.map(order => {
-        if (order.id !== orderId) return order;
-
-        const messages: Record<OrderStatus["status"], string> = {
-          received: "Order received! We're getting it started.",
-          preparing: "Your order is being prepared with love!",
-          ready: "Your order is ready for pickup!",
-          completed: "Order completed. Enjoy your meal!",
-        };
-
-        const updatedOrder: OrderStatus = {
-          ...order,
-          status: newStatus,
-          updates: [
-            ...order.updates,
-            {
-              status: newStatus,
-              message: messages[newStatus],
-              timestamp: Date.now(),
-            },
-          ],
-        };
-
-        // Move to history if completed
-        if (newStatus === "completed") {
-          setOrderHistory(h => [updatedOrder, ...h]);
-          return null as any; // Will be filtered out
-        }
-
-        return updatedOrder;
-      }).filter(Boolean);
+  async function createOrderApi(payload: {
+    items: Array<{ id: string; name: string; price: number; quantity: number }>;
+    total: number;
+    specialInstructions?: string;
+    customerPhone?: string;
+  }): Promise<Order> {
+    const res = await fetch(`${API_BASE}/orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
-  }, []);
+    if (!res.ok) throw new Error("Failed to create order");
+    const data = await res.json();
+    return mapOrder(data.order);
+  }
 
-  const getOrderById = useCallback((orderId: string): OrderStatus | undefined => {
-    return activeOrders.find(o => o.id === orderId) || orderHistory.find(o => o.id === orderId);
-  }, [activeOrders, orderHistory]);
+  async function updateOrderStatusApi(id: string, status: Order["status"]): Promise<Order> {
+    const res = await fetch(`${API_BASE}/orders/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (!res.ok) throw new Error("Failed to update order");
+    const data = await res.json();
+    return mapOrder(data.order);
+  }
 
-  const cancelOrder = useCallback((orderId: string): boolean => {
-    const order = activeOrders.find(o => o.id === orderId);
-    if (!order || order.status !== "received") return false;
+  // ─── Mapper: API response → frontend Order ──────────────────────────────────
 
-    setActiveOrders(prev => prev.filter(o => o.id !== orderId));
-    return true;
-  }, [activeOrders]);
-
-  // Simulate order progress
-  useEffect(() => {
-    const interval = setInterval(() => {
-      activeOrders.forEach(order => {
-        if (order.status === "received") {
-          // Move to preparing after 2 minutes
-          if (Date.now() - order.timestamp > 2 * 60 * 1000) {
-            updateOrderStatus(order.id, "preparing");
-          }
-        } else if (order.status === "preparing") {
-          // Move to ready after 10 minutes
-          if (Date.now() - order.timestamp > 10 * 60 * 1000) {
-            updateOrderStatus(order.id, "ready");
-          }
-        }
-      });
-    }, 30000); // Check every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [activeOrders, updateOrderStatus]);
+  function mapOrder(doc: Record<string, unknown>): Order {
+    const items = typeof doc.items === "string" ? JSON.parse(doc.items) : doc.items;
+    return {
+      id: doc.id as string,
+      orderNumber: doc.orderNumber as number,
+      items: (items as Array<{ id: string; name: string; price: number; quantity: number }>).map(
+        (item) => ({
+          id: item.id,
+          name: item.name,
+          description: "",
+          price: item.price,
+          category: "specialties" as const,
+          quantity: item.quantity,
+        })
+      ),
+      specialInstructions: (doc.specialInstructions as string) ?? "",
+      customerPhone: doc.customerPhone as string | undefined,
+      status: doc.status as Order["status"],
+      createdAt: new Date(doc.createdAt as number).toISOString(),
+      updatedAt: doc.updatedAt as number,
+    };
+  }
 
   return {
-    activeOrders,
-    orderHistory,
-    createOrder,
-    updateOrderStatus,
-    getOrderById,
-    cancelOrder,
+    createOrder: createOrderApi,
+    updateStatus: updateOrderStatusApi,
+    loadActiveOrders,
+    loadCompletedOrders,
+    mapOrder,
   };
 }

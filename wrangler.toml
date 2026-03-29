@@ -1,0 +1,8 @@
+name = "taco-bell-api"
+main = "workers/api.ts"
+compatibility_date = "2024-01-01"
+
+[vars]
+# Override in wrangler.toml.secret with:
+# npx wrangler secret put TURSO_DATABASE_URL
+# npx wrangler secret put TURSO_AUTH_TOKEN

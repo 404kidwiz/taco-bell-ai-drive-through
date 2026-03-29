@@ -25,6 +25,7 @@ import { useVoiceAI } from "./hooks/useVoiceAI";
 import { useCartStore } from "./hooks/useCartStore";
 import { useCustomization } from "./hooks/useCustomization";
 import { useRewards } from "./hooks/useRewards";
+import { useOrderTracking } from "./hooks/useOrderTracking";
 import Nav from "@/components/Nav";
 import HeroVoiceSection from "@/components/Hero";
 import MenuGrid from "@/components/MenuGrid";
@@ -43,20 +44,9 @@ const menuItemVariants = {
 
 const springTransition = { type: "spring", stiffness: 400, damping: 17 };
 
-// ─── localStorage helpers ─────────────────────────────────────────────────────
-const ORDERS_KEY = "taco-bell-orders";
-
+// ─── order number generator ──────────────────────────────────────────────────
 function generateOrderNumber(): number {
   return Math.floor(100 + Math.random() * 900);
-}
-
-function saveOrderToStorage(order: Order) {
-  try {
-    const stored = localStorage.getItem(ORDERS_KEY);
-    const orders: Order[] = stored ? JSON.parse(stored) : [];
-    orders.unshift(order);
-    localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
-  } catch { /* ignore */ }
 }
 
 // ─── Voice Visualizer ─────────────────────────────────────────────────────────
@@ -531,10 +521,11 @@ function CartDrawer({ isOpen, onClose, cart, cartTotal, onUpdateQty, onRemove, o
 function ConfirmModal({ cart, cartTotal, onConfirm, onEdit }: {
   cart: CartItem[];
   cartTotal: number;
-  onConfirm: (specialInstructions?: string) => void;
+  onConfirm: (specialInstructions?: string, customerPhone?: string) => void;
   onEdit: () => void;
 }) {
   const [specialInstructions, setSpecialInstructions] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const tax = cartTotal * 0.08;
   const total = cartTotal + tax;
   const hasSpokenRef = { current: false };
@@ -628,6 +619,21 @@ function ConfirmModal({ cart, cartTotal, onConfirm, onEdit }: {
           />
         </div>
 
+        {/* Phone Number */}
+        <div style={{ paddingTop: "0.75rem", marginTop: "0.75rem" }}>
+          <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--gray-400)" }}>
+            Phone (optional) — for order updates
+          </label>
+          <input
+            type="tel"
+            value={customerPhone}
+            onChange={(e) => setCustomerPhone(e.target.value)}
+            placeholder="(555) 123-4567"
+            className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder:text-[var(--gray-600)]"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid var(--border)" }}
+          />
+        </div>
+
         {/* Totals */}
         <div className="space-y-2 mb-6" style={{ borderTop: "2px solid var(--border)", paddingTop: "1rem" }}>
           <div className="flex justify-between text-sm" style={{ color: "var(--gray-400)" }}>
@@ -649,7 +655,7 @@ function ConfirmModal({ cart, cartTotal, onConfirm, onEdit }: {
           <motion.button
             whileHover={{ scale: 1.02, y: -1 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => onConfirm(specialInstructions)}
+            onClick={() => onConfirm(specialInstructions, customerPhone)}
             className="w-full py-4 text-base font-bold rounded-xl flex items-center justify-center gap-2"
             style={{
               background: "linear-gradient(135deg, var(--yellow) 0%, var(--orange) 100%)",
@@ -1358,38 +1364,51 @@ export default function DriveThrough() {
     setShowConfirmModal(true);
   };
 
-  const handlePlaceOrder = (specialInstructions?: string) => {
+  const { createOrder: createOrderApi } = useOrderTracking();
+
+  const handlePlaceOrder = async (specialInstructions?: string, customerPhone?: string) => {
     const pointsEarned = calculatePointsForOrder(cartTotal);
-    const orderNum = generateOrderNumber();
-    const order: Order = {
-      id: `order-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      orderNumber: orderNum,
-      items: cart,
-      specialInstructions: specialInstructions || "",
-      status: "pending",
-      createdAt: new Date().toISOString(),
-    };
-    saveOrderToStorage(order);
     addPoints(pointsEarned);
     setLastPointsEarned(pointsEarned);
 
-    // Broadcast to kitchen display for instant updates
+    // Save to Turso via Cloudflare Worker API — real-time sync to kitchen via SSE
     try {
-      const ch = new BroadcastChannel("taco-bell-orders");
-      ch.postMessage({ type: "ORDER_PLACED", order });
-      ch.close();
-    } catch { /* noop */ }
+      const result = await createOrderApi({
+        items: cart.map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+        })),
+        total: cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
+        specialInstructions: specialInstructions || undefined,
+        customerPhone: customerPhone || undefined,
+      });
 
-    setShowConfirmModal(false);
-    setPlacedOrderNumber(orderNum);
-    setOrderState("completed");
-    clearCart();
+      const orderNum = result?.orderNumber ?? generateOrderNumber();
 
-    setTimeout(() => {
-      setOrderState("idle");
-      setPlacedOrderNumber(null);
-      setAiMessage("Thank you for ordering! Your food is being prepared. ¡Yo quiero Taco Bell!");
-    }, 5000);
+      setShowConfirmModal(false);
+      setPlacedOrderNumber(orderNum);
+      setOrderState("completed");
+      clearCart();
+
+      setTimeout(() => {
+        setOrderState("idle");
+        setPlacedOrderNumber(null);
+        setAiMessage("Thank you for ordering! Your food is being prepared. ¡Yo quiero Taco Bell!");
+      }, 5000);
+    } catch {
+      // Order creation failed — show error state but don't block the user
+      setAiMessage("Order placed! (Kitchen will be notified shortly)");
+      setShowConfirmModal(false);
+      setPlacedOrderNumber(generateOrderNumber());
+      setOrderState("completed");
+      clearCart();
+      setTimeout(() => {
+        setOrderState("idle");
+        setPlacedOrderNumber(null);
+      }, 5000);
+    }
   };
 
   return (

@@ -1,6 +1,32 @@
 # 🌮 Taco Bell AI Drive-Through
 
-A modern AI-powered voice ordering system for Taco Bell, built with Next.js 15, OpenAI Realtime API, and Framer Motion.
+A modern AI-powered Taco Bell drive-through prototype built with Next.js 15, OpenAI voice flows, Convex-backed order state, and a cinematic frontend direction. The repo now includes a checked-in Stitch redesign handoff so another CLI or implementation agent can rebuild the experience against an approved visual system instead of starting from scratch.
+
+## Project Summary
+
+The product has two major surfaces:
+
+- **Customer lane experience**: voice-first ordering, menu browse, cart build, review, and pickup state
+- **Kitchen display system**: operational ticket management for prep staff
+
+The current implementation already covers the core product flow, but the approved redesign shifts it into a more unified system:
+
+- a single nocturnal drive-through identity across customer and kitchen views
+- stronger AI voice presence and state feedback
+- explicit stage-based flow from arrival to pickup
+- responsive variants for mobile customer ordering and tablet kitchen operations
+
+## Redesign Handoff
+
+Use these files as the source of truth before implementation:
+
+- [`.stitch/DESIGN.md`](/Users/404kidwiz/projects/taco-bell-ai-drive-through/.stitch/DESIGN.md)
+- [`docs/redesign/REDESIGN-HANDOFF.md`](/Users/404kidwiz/projects/taco-bell-ai-drive-through/docs/redesign/REDESIGN-HANDOFF.md)
+
+Stitch source project:
+
+- `Taco Bell Drive-Through Redesign`
+- Project ID: `6883950520556782876`
 
 ## Features
 
