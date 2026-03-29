@@ -30,6 +30,15 @@
 /* Baja cyan pulse */
 .baja-pulse { border-bottom: 2px solid #12D7F2; box-shadow: 0 4px 12px -2px rgba(18, 215, 242, 0.3); }
 
+/* Baja glow full */
+.baja-glow-full { box-shadow: 0 0 15px rgba(18, 215, 242, 0.4); }
+
+/* Neon glows explicit */
+.neon-glow-primary { box-shadow: 0 0 20px rgba(109, 40, 255, 0.3); }
+.neon-glow-secondary { box-shadow: 0 0 25px rgba(244, 98, 22, 0.4); }
+.neon-glow-tertiary { box-shadow: 0 0 20px rgba(249, 189, 66, 0.3); }
+.neon-glow-baja { box-shadow: 0 0 20px rgba(18, 215, 242, 0.4); }
+
 /* AI breathe animation */
 .ai-breathe { box-shadow: 0 0 15px rgba(18, 215, 242, 0.4); }
 

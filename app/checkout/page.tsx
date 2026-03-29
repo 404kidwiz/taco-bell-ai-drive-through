@@ -1,202 +1,385 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { useCartStore } from "../hooks/useCartStore";
 import Nav from "@/components/Nav";
+import Link from "next/link";
+import { useCartStore } from "../hooks/useCartStore";
 
-const MENU_TABS = [
-  { id: "menu", label: "Menu", icon: "restaurant_menu" },
-  { id: "tacos", label: "Tacos", icon: "tapas" },
-  { id: "burritos", label: "Burritos", icon: "lunch_dining" },
-  { id: "specials", label: "Specials", icon: "stars" },
-  { id: "drinks", label: "Drinks", icon: "local_drink" },
-  { id: "limited", label: "Limited Time", icon: "schedule" },
-];
-
-const ADD_ONS = [
-  { name: "CHIPS & CHEESE", price: 2.19 },
-  { name: "CINNAMON TWISTS", price: 1.50 },
-  { name: "GUACAMOLE CUP", price: 1.20 },
-  { name: "DIPPING SAUCE", price: 0.50 },
-  { name: "STRAWBERRY FREEZE", price: 2.99 },
-];
-
-function FeaturedBox() {
+// ── Progress Tracker ──────────────────────────────────────────────────────────
+function ProgressTracker({ step }: { step: 1 | 2 | 3 }) {
   return (
-    <div className="bg-gradient-to-r from-secondary-container to-primary-container rounded-xl p-4 flex items-center justify-between">
-      <div>
-        <span className="text-[10px] font-label font-bold uppercase tracking-widest text-secondary-fixed/70">Limited Time</span>
-        <h3 className="font-headline font-bold text-white text-lg leading-tight mt-0.5">Ultimate Cravings Box</h3>
-        <p className="text-secondary-fixed font-headline font-bold text-xl">$9.99</p>
-      </div>
-      <button className="px-5 py-2.5 rounded-full bg-white text-secondary-container font-label font-bold text-sm">
-        Build Box
-      </button>
-    </div>
-  );
-}
-
-function AddOnChip({ name, price, onAdd }: { name: string; price: number; onAdd: () => void }) {
-  return (
-    <div className="flex-shrink-0 flex items-center gap-3 bg-surface-container rounded-full px-4 py-2 border border-outline/10">
-      <div>
-        <p className="text-xs font-label font-bold text-on-surface whitespace-nowrap">{name}</p>
-        <p className="text-[10px] text-on-surface-variant">${price.toFixed(2)}</p>
-      </div>
-      <button
-        onClick={onAdd}
-        className="w-6 h-6 rounded-full bg-secondary-container flex items-center justify-center flex-shrink-0"
-      >
-        <span className="material-symbols-outlined text-xs text-white">add</span>
-      </button>
-    </div>
-  );
-}
-
-function CartItemRow({ item, onUpdateQty, onRemove }: {
-  item: { id: string; name: string; price: number; quantity: number };
-  onUpdateQty: (delta: number) => void;
-  onRemove: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-3 py-3 border-b border-outline/10 last:border-0">
-      <div className="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center flex-shrink-0">
-        <span className="material-symbols-outlined text-lg text-primary">fastfood</span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-label font-semibold text-on-surface text-sm truncate">{item.name}</p>
-        <p className="text-xs text-on-surface-variant">${item.price.toFixed(2)} each</p>
-      </div>
-      <div className="flex items-center gap-2 bg-surface-container rounded-full px-1 py-0.5">
-        <button
-          onClick={() => onUpdateQty(-1)}
-          className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-surface-container-high transition-colors"
-        >
-          <span className="material-symbols-outlined text-xs text-on-surface">remove</span>
-        </button>
-        <span className="w-5 text-center font-label font-bold text-on-surface text-sm">{item.quantity}</span>
-        <button
-          onClick={() => onUpdateQty(1)}
-          className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-surface-container-high transition-colors"
-        >
-          <span className="material-symbols-outlined text-xs text-on-surface">add</span>
-        </button>
-      </div>
-      <span className="font-headline font-bold text-tertiary text-sm w-14 text-right">
-        ${(item.price * item.quantity).toFixed(2)}
-      </span>
-    </div>
-  );
-}
-
-export default function CheckoutPage() {
-  const [activeTab, setActiveTab] = useState("menu");
-  const { items: cart, updateQuantity, removeItem } = useCartStore();
-
-  const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
-  const cartTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
-  const tax = cartTotal * 0.08;
-  const total = cartTotal + tax;
-
-  return (
-    <div className="min-h-screen bg-surface-dim">
-      <Nav />
-
-      <div className="max-w-xl mx-auto px-4 pt-20 pb-36">
-        {/* Featured Box */}
-        <FeaturedBox />
-
-        {/* Category Tabs */}
-        <div className="flex gap-1.5 overflow-x-auto hide-scrollbar mt-5 -mx-4 px-4">
-          {MENU_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-label font-bold transition-all ${
-                activeTab === tab.id
-                  ? "bg-primary-container text-white"
-                  : "bg-surface-container text-on-surface-variant"
-              }`}
-            >
-              <span className="material-symbols-outlined text-xs">{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Current Order Section */}
-        <div className="mt-5">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-headline font-bold text-on-surface text-base">Current Order</h2>
-            <span className="text-sm font-label text-on-surface-variant">
-              {cartCount} {cartCount === 1 ? 'Item' : 'Items'} • ${cartTotal.toFixed(2)}
-            </span>
+    <div className="flex items-center justify-center mb-12">
+      <div className="flex items-center gap-4 bg-surface-container-low px-8 py-4 rounded-full">
+        {/* Step 1 */}
+        <div className="flex items-center gap-2">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ${step >= 1 ? "bg-primary-container text-white" : "bg-surface-variant text-[#494457]"}`}>
+            {step > 1 ? <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "FILL 1" }}>check</span> : "01"}
           </div>
-
-          <div className="bg-surface-container rounded-xl p-4">
-            {cart.length === 0 ? (
-              <div className="text-center py-8">
-                <span className="material-symbols-outlined text-4xl text-on-surface-variant/30">shopping_cart</span>
-                <p className="mt-2 text-sm text-on-surface-variant">Your cart is empty</p>
-              </div>
-            ) : (
-              cart.map((item) => (
-                <CartItemRow
-                  key={item.id}
-                  item={item}
-                  onUpdateQty={(delta) => {
-                    const newQty = item.quantity + delta;
-                    if (newQty <= 0) removeItem(item.id);
-                    else updateQuantity(item.id, newQty);
-                  }}
-                  onRemove={() => removeItem(item.id)}
-                />
-              ))
-            )}
-
-            {cart.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-outline/10 flex justify-between items-center">
-                <span className="text-xs text-on-surface-variant font-label">Tax (8%)</span>
-                <span className="text-xs text-on-surface-variant font-label">${tax.toFixed(2)}</span>
-              </div>
-            )}
-          </div>
+          <span className={`text-xs font-bold uppercase tracking-widest ${step >= 1 ? "text-primary" : "text-[#494457]"}`}>Ordering</span>
         </div>
+        <div className={`w-12 h-px ${step >= 2 ? "bg-primary" : "bg-outline-variant"}`} />
+        {/* Step 2 */}
+        <div className="flex items-center gap-2">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ${step >= 2 ? "bg-tertiary text-[#412d00] shadow-[0_0_15px_rgba(249,189,66,0.4)]" : "bg-surface-variant text-[#494457]"}`}>
+            {step > 2 ? <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "FILL 1" }}>check</span> : "02"}
+          </div>
+          <span className={`text-xs font-bold uppercase tracking-widest ${step === 2 ? "text-tertiary" : step > 2 ? "text-primary" : "text-[#494457]"}`}>Review</span>
+        </div>
+        <div className={`w-12 h-px ${step >= 3 ? "bg-primary" : "bg-outline-variant"}`} />
+        {/* Step 3 */}
+        <div className="flex items-center gap-2">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ${step >= 3 ? "bg-primary-container text-white" : "bg-surface-variant text-[#494457]"}`}>
+            03
+          </div>
+          <span className={`text-xs font-bold uppercase tracking-widest ${step >= 3 ? "text-primary" : "text-[#494457]"}`}>Pickup</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-        {/* Finish The Vibe — Add-ons */}
-        <div className="mt-6">
-          <h3 className="font-headline font-bold text-on-surface text-base mb-1">Finish The Vibe</h3>
-          <p className="text-xs text-on-surface-variant mb-3 font-label">Add-ons</p>
-          <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-            {ADD_ONS.map((ao) => (
-              <AddOnChip
-                key={ao.name}
-                name={ao.name}
-                price={ao.price}
-                onAdd={() => {}}
-              />
+// ── Order Item Row ─────────────────────────────────────────────────────────────
+function OrderItemRow({ name, price, qty, options }: { name: string; price: number; qty: number; options?: string[] }) {
+  return (
+    <div className="flex gap-5 items-start">
+      <div className="w-20 h-20 rounded-lg bg-surface-container-highest flex-shrink-0 overflow-hidden flex items-center justify-center">
+        <span className="material-symbols-outlined text-3xl text-primary/20">fastfood</span>
+      </div>
+      <div className="flex-grow">
+        <div className="flex justify-between">
+          <h3 className="font-headline text-lg font-bold uppercase tracking-tight text-white">{name}</h3>
+          <span className="font-headline font-bold text-tertiary text-lg">${price.toFixed(2)}</span>
+        </div>
+        {options && options.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {options.map((opt) => (
+              <span key={opt} className="px-2 py-0.5 bg-surface-variant text-[#CBC3DA] text-[10px] font-label font-bold uppercase tracking-widest rounded-full border border-outline/20">
+                {opt}
+              </span>
             ))}
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── AI Voice Card ──────────────────────────────────────────────────────────────
+function AIVoiceCard({ message }: { message: string }) {
+  return (
+    <div className="bg-surface-container-high rounded-xl p-6 shadow-2xl relative overflow-hidden">
+      <div className="absolute top-0 right-0 p-4">
+        <span className="flex h-3 w-3">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-baja-cyan opacity-75" />
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-baja-cyan" />
+        </span>
+      </div>
+      <h3 className="text-baja-cyan text-[10px] font-black uppercase tracking-[0.3em] mb-4">AI Assistant Active</h3>
+      {/* Voice waveform bars */}
+      <div className="flex items-end gap-1 h-12 mb-6 justify-center">
+        {[4, 8, 12, 9, 14, 12, 6, 10].map((h, i) => (
+          <div
+            key={i}
+            className="w-1.5 rounded-full bg-baja-cyan animate-pulse"
+            style={{ height: `${h * 3}px`, animationDelay: `${i * 0.15}s` }}
+          />
+        ))}
+      </div>
+      <div className="p-3 bg-surface-container-lowest rounded-lg border-l-4 border-baja-cyan">
+        <p className="text-[#CBC3DA] text-sm italic font-label">"{message}"</p>
+      </div>
+    </div>
+  );
+}
+
+// ── Rewards Summary ─────────────────────────────────────────────────────────────
+function RewardsSummary({ earned }: { earned: number }) {
+  return (
+    <div className="p-5 bg-primary-container/10 border border-primary-container/20 rounded-xl flex items-center justify-between">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 bg-primary-container rounded-full flex items-center justify-center text-white shadow-[0_0_20px_rgba(109,40,255,0.4)]">
+          <span className="material-symbols-outlined" style={{ fontVariationSettings: "FILL 1" }}>stars</span>
+        </div>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Rewards Points</p>
+          <p className="font-headline font-bold text-white">+ {earned} Points Earned</p>
         </div>
       </div>
-
-      {/* Bottom Mic Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-surface-dim/95 backdrop-blur-xl border-t border-outline/10 px-4 py-3">
-        <div className="flex items-center gap-4 max-w-xl mx-auto">
-          <button className="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center ai-breathe flex-shrink-0">
-            <span className="material-symbols-outlined text-xl text-white">mic</span>
-          </button>
-          <div className="flex-1">
-            <p className="text-xs font-label font-bold text-on-surface-variant">Listening...</p>
-            <p className="text-[10px] text-on-surface-variant/70">Tap to speak</p>
-          </div>
-          <button className="flex items-center gap-2 px-5 py-3 rounded-full bg-secondary-container text-white font-label font-bold text-sm">
-            Review Order
-            <span className="material-symbols-outlined text-sm">arrow_forward</span>
-          </button>
+      <div className="text-right">
+        <p className="text-[10px] font-bold text-[#CBC3DA] uppercase tracking-widest">Next Reward</p>
+        <div className="w-28 h-1.5 bg-surface-variant rounded-full mt-1 overflow-hidden">
+          <div className="h-full bg-primary" style={{ width: "85%" }} />
         </div>
       </div>
     </div>
+  );
+}
+
+// ── Mobile Order Review ─────────────────────────────────────────────────────────
+function MobileCheckout() {
+  const [step, setStep] = useState<1 | 2 | 3>(2);
+  const [specialInstructions, setSpecialInstructions] = useState("");
+  const { items: cart } = useCartStore();
+  const cartTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const tax = cartTotal * 0.085;
+  const total = cartTotal + tax;
+  const earnedPoints = Math.floor(total * 10);
+
+  return (
+    <div className="md:hidden min-h-screen bg-surface-dim pb-32">
+      {/* Top App Bar */}
+      <header className="sticky top-0 z-50 bg-surface-container border-b border-outline/10 flex items-center justify-between px-6 py-4">
+        <div className="flex items-center gap-4">
+          <Link href="/menu" className="text-primary active:scale-95 transition-transform">
+            <span className="material-symbols-outlined">arrow_back</span>
+          </Link>
+          <h1 className="font-headline font-black uppercase tracking-tighter text-xl text-primary">Review Order</h1>
+        </div>
+        <span className="material-symbols-outlined text-primary">notifications</span>
+      </header>
+
+      <div className="px-6 pt-4 space-y-6">
+        {/* Progress */}
+        <section className="flex items-center justify-between px-2">
+          <div className={`flex flex-col items-center gap-1 flex-1 ${step >= 1 ? "opacity-100" : "opacity-30"}`}>
+            <div className={`h-1 w-full rounded-full ${step >= 1 ? "bg-primary-container" : "bg-outline-variant"}`} />
+            <span className="font-label text-[9px] font-bold uppercase tracking-widest">Ordering</span>
+          </div>
+          <div className="w-3" />
+          <div className={`flex flex-col items-center gap-1 flex-1 ${step >= 2 ? "opacity-100" : "opacity-30"}`}>
+            <div className={`h-1 w-full rounded-full ${step >= 2 ? "bg-secondary-container" : "bg-outline-variant"}`} />
+            <span className="font-label text-[9px] font-bold uppercase tracking-widest text-secondary-container">Review</span>
+          </div>
+          <div className="w-3" />
+          <div className={`flex flex-col items-center gap-1 flex-1 ${step >= 3 ? "opacity-100" : "opacity-30"}`}>
+            <div className={`h-1 w-full rounded-full ${step >= 3 ? "bg-primary-container" : "bg-outline-variant"}`} />
+            <span className="font-label text-[9px] font-bold uppercase tracking-widest">Pickup</span>
+          </div>
+        </section>
+
+        {/* AI Status */}
+        <section className="bg-surface-container-low rounded-lg p-4 flex items-center gap-4 border-l-4 border-baja-cyan baja-glow-full">
+          <div className="flex items-center gap-1">
+            <div className="w-1 h-4 bg-baja-cyan rounded-full animate-pulse" />
+            <div className="w-1 h-8 bg-baja-cyan rounded-full animate-pulse" style={{ animationDelay: "0.1s" }} />
+            <div className="w-1 h-5 bg-baja-cyan rounded-full animate-pulse" style={{ animationDelay: "0.2s" }} />
+          </div>
+          <div>
+            <p className="font-label text-[10px] text-baja-cyan font-extrabold uppercase tracking-widest">AI Status</p>
+            <p className="font-body text-sm font-medium text-[#e8def8]">Reviewing your order...</p>
+          </div>
+        </section>
+
+        {/* Order Ticket */}
+        <article className="bg-surface-container-low rounded-xl overflow-hidden shadow-xl border border-outline/10">
+          <div className="bg-surface-container-highest px-6 py-4 flex justify-between items-center">
+            <h2 className="font-headline text-lg font-bold tracking-tight uppercase text-white">Your Order</h2>
+            <span className="font-label text-xs font-black bg-primary-container text-white px-3 py-1 rounded-full">TICKET #4029</span>
+          </div>
+          <div className="p-6 space-y-6">
+            {cart.map((item) => (
+              <OrderItemRow
+                key={item.id}
+                name={item.name}
+                price={item.price}
+                qty={item.quantity}
+                options={[]}
+              />
+            ))}
+            {/* Special Instructions */}
+            <div className="pt-4 border-t border-outline/20">
+              <label className="font-label text-[10px] font-bold uppercase tracking-widest text-outline block mb-2">Special Instructions</label>
+              <textarea
+                className="w-full bg-surface-container-lowest border-none rounded-lg p-4 text-sm focus:ring-2 focus:ring-secondary-container min-h-[80px] placeholder:text-outline-variant font-label"
+                placeholder="e.g., Please leave at the pick-up shelf..."
+                value={specialInstructions}
+                onChange={(e) => setSpecialInstructions(e.target.value)}
+              />
+            </div>
+          </div>
+        </article>
+
+        {/* Summary */}
+        <section className="space-y-3">
+          <div className="flex items-center gap-2 bg-primary/10 rounded-full px-4 py-2 w-fit">
+            <span className="material-symbols-outlined text-tertiary text-sm" style={{ fontVariationSettings: "FILL 1" }}>stars</span>
+            <span className="font-label text-[10px] font-extrabold uppercase tracking-widest text-primary">+{earnedPoints} POINTS EARNED</span>
+          </div>
+          <div className="space-y-2 px-2">
+            <div className="flex justify-between text-sm text-[#CBC3DA]">
+              <span className="font-label">Subtotal</span>
+              <span className="font-label">${cartTotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-[#CBC3DA]">
+              <span className="font-label">Tax</span>
+              <span className="font-label">${tax.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-baseline pt-4 border-t border-outline/10">
+              <span className="font-headline text-lg font-bold">TOTAL</span>
+              <span className="font-headline text-3xl font-extrabold text-secondary-container neon-glow-secondary">${total.toFixed(2)}</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* Bottom Nav */}
+      <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-between gap-4 px-6 pb-10 bg-[#2C273A]/60 backdrop-blur-xl rounded-t-[2rem] pt-4 shadow-[0_-10px_30px_rgba(109,40,255,0.15)]">
+        <Link href="/menu" className="flex flex-col items-center justify-center text-[#CBC3DA] bg-surface-bright rounded-full py-4 px-6 w-full hover:brightness-110 transition-all active:scale-98">
+          <span className="material-symbols-outlined mb-1">edit</span>
+          <span className="font-manrope font-extrabold uppercase tracking-widest text-xs">Edit Order</span>
+        </Link>
+        <Link
+          href="/order-status"
+          className="flex flex-col items-center justify-center bg-gradient-to-br from-primary to-primary-container text-white rounded-full py-4 px-6 w-full shadow-[0_0_20px_rgba(109,40,255,0.5)] hover:brightness-110 transition-all active:scale-98"
+        >
+          <span className="material-symbols-outlined mb-1" style={{ fontVariationSettings: "FILL 1" }}>local_fire_department</span>
+          <span className="font-manrope font-extrabold uppercase tracking-widest text-xs">Confirm & Fire</span>
+        </Link>
+      </nav>
+
+      {/* Floating Add More */}
+      <div className="fixed bottom-28 right-6 z-40">
+        <button className="bg-surface-bright p-4 rounded-full shadow-lg border border-outline/20 flex items-center gap-2 hover:bg-surface-container-highest transition-colors">
+          <span className="material-symbols-outlined text-primary">add_circle</span>
+          <span className="font-label text-xs font-bold uppercase tracking-widest pr-2">Add More</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Desktop Checkout ────────────────────────────────────────────────────────────
+function DesktopCheckout() {
+  const [specialInstructions, setSpecialInstructions] = useState("");
+  const { items: cart } = useCartStore();
+  const cartTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const tax = cartTotal * 0.085;
+  const total = cartTotal + tax;
+  const earnedPoints = Math.floor(total * 10);
+
+  const SAMPLE_ITEMS = [
+    { name: "CHEESY GORDITA CRUNCH", price: 4.89, options: ["+ Extra Cheese", "No Tomatoes"] },
+    { name: "Baja Blast Freeze", price: 2.99, options: ["Large", "Light Ice"] },
+  ];
+
+  return (
+    <div className="hidden md:block min-h-screen bg-surface-dim">
+      <Nav />
+
+      <main className="pt-32 pb-40 px-6 md:px-12 max-w-7xl mx-auto w-full">
+        {/* Progress Tracker */}
+        <ProgressTracker step={2} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+          {/* Left: Order Summary */}
+          <div className="lg:col-span-7 space-y-8">
+            {/* Order Card */}
+            <div className="bg-surface-container-low rounded-xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+              <div className="px-8 py-6 border-b border-outline/20 flex justify-between items-end">
+                <h2 className="font-headline text-4xl font-black uppercase tracking-tighter text-primary">Your Order</h2>
+                <span className="text-[#CBC3DA] text-sm font-label uppercase tracking-widest">Ticket #4029</span>
+              </div>
+              <div className="p-8 space-y-10">
+                {SAMPLE_ITEMS.map((item, i) => (
+                  <OrderItemRow key={i} name={item.name} price={item.price} qty={1} options={item.options} />
+                ))}
+              </div>
+
+              {/* Special Instructions */}
+              <div className="px-8 pb-8">
+                <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-outline mb-3">Special Instructions</label>
+                <div className="relative">
+                  <textarea
+                    className="w-full bg-surface-container-lowest border-none rounded-xl p-4 text-[#e8def8] placeholder:text-outline/40 focus:ring-2 focus:ring-secondary-container transition-all min-h-[80px] resize-none font-label"
+                    placeholder="E.g., Leave at the third window, extra napkins..."
+                    value={specialInstructions}
+                    onChange={(e) => setSpecialInstructions(e.target.value)}
+                  />
+                  <div className="absolute bottom-3 right-3 opacity-20">
+                    <span className="material-symbols-outlined text-4xl">edit_note</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Rewards Summary */}
+              <div className="mx-8 mb-8 p-5 bg-primary-container/10 border border-primary-container/20 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-primary-container rounded-full flex items-center justify-center text-white shadow-[0_0_20px_rgba(109,40,255,0.4)]">
+                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "FILL 1" }}>stars</span>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Rewards Points</p>
+                    <p className="text-[#e8def8] font-headline font-bold">+ {earnedPoints} Points Earned</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-bold text-[#CBC3DA] uppercase tracking-widest">Next Reward</p>
+                  <div className="w-32 h-1.5 bg-surface-variant rounded-full mt-1 overflow-hidden">
+                    <div className="h-full bg-primary" style={{ width: "85%" }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: AI + Payment */}
+          <div className="lg:col-span-5 space-y-6">
+            {/* AI Voice Card */}
+            <AIVoiceCard message="Reviewing your order for one Cheesy Gordita Crunch with extra cheese, no tomatoes, and a large Baja Blast with light ice. Does everything look correct?" />
+
+            {/* Payment Breakdown */}
+            <div className="bg-surface-container-low rounded-xl p-8">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-outline mb-6">Order Total</h4>
+              <div className="space-y-4">
+                <div className="flex justify-between text-[#CBC3DA]">
+                  <span className="text-sm font-label uppercase tracking-widest">Subtotal</span>
+                  <span className="font-bold font-label">${cartTotal > 0 ? cartTotal.toFixed(2) : "7.88"}</span>
+                </div>
+                <div className="flex justify-between text-[#CBC3DA]">
+                  <span className="text-sm font-label uppercase tracking-widest">Tax (8.5%)</span>
+                  <span className="font-bold font-label">${tax > 0 ? tax.toFixed(2) : "0.67"}</span>
+                </div>
+                <div className="pt-4 border-t border-outline/30 flex justify-between items-end">
+                  <span className="text-lg font-headline font-bold uppercase tracking-tight text-white">Total</span>
+                  <span className="text-4xl font-headline font-black text-tertiary tracking-tighter">${total > 0 ? total.toFixed(2) : "8.55"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Primary CTA */}
+            <Link
+              href="/order-status"
+              className="w-full py-6 rounded-full bg-gradient-to-br from-secondary-container to-secondary text-white font-headline text-2xl font-black uppercase tracking-widest shadow-[0_15px_40px_rgba(244,98,22,0.3)] hover:shadow-[0_20px_50px_rgba(244,98,22,0.5)] active:scale-[0.98] transition-all relative overflow-hidden group flex items-center justify-center gap-3"
+            >
+              Confirm & Fire
+              <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "FILL 1" }}>local_fire_department</span>
+              <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+            </Link>
+
+            {/* Secondary Actions */}
+            <div className="flex gap-4">
+              <Link href="/menu" className="flex-1 py-4 rounded-full bg-surface-bright border border-outline/20 text-[#CBC3DA] font-label text-xs font-extrabold uppercase tracking-widest hover:bg-surface-container-highest transition-colors flex items-center justify-center gap-2">
+                <span className="material-symbols-outlined text-lg">edit</span>
+                Edit Order
+              </Link>
+              <Link href="/menu" className="flex-1 py-4 rounded-full bg-surface-bright border border-outline/20 text-[#CBC3DA] font-label text-xs font-extrabold uppercase tracking-widest hover:bg-surface-container-highest transition-colors flex items-center justify-center gap-2">
+                <span className="material-symbols-outlined text-lg">add</span>
+                Add More
+              </Link>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// ── Main Checkout Page ─────────────────────────────────────────────────────────
+export default function CheckoutPage() {
+  return (
+    <>
+      <DesktopCheckout />
+      <MobileCheckout />
+    </>
   );
 }

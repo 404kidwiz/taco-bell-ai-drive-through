@@ -62,6 +62,12 @@ module.exports = {
         'on-error-container': '#ffdad6',
         // Semantic
         'surface-tint': '#cebdff',
+        // Baja cyan
+        'baja-cyan': '#12D7F2',
+        'baja-cyan-dim': 'rgba(18, 215, 242, 0.2)',
+        // Misc
+        'baja-fire': '#FF6A1F',
+        'success-green': '#4ADE80',
       },
       fontFamily: {
         headline: ['Space Grotesk', 'sans-serif'],
