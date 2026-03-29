@@ -14,18 +14,20 @@ import {
 import Nav from "@/components/Nav";
 
 const C = {
-  void: "var(--void)",
-  voidLight: "var(--void-light)",
-  voidElevated: "var(--void-elevated)",
-  purple: "#7C3AED",
-  purpleLight: "#9D5EFF",
-  orange: "#FF6B35",
-  yellow: "#FFD23F",
-  green: "#10B981",
+  void: "#151022",
+  voidLight: "#1E192B",
+  voidElevated: "#221D2F",
+  surfaceHighest: "#373245",
+  purple: "#6D28FF",
+  purpleLight: "#CEBDFF",
+  orange: "#FF6A1F",
+  yellow: "#FFC247",
+  green: "#12D7F2",
   red: "#EF4444",
   white: "#FFFFFF",
-  muted: "#9CA3AF",
-  dim: "#4B5563",
+  readableBody: "#CBC3DA",
+  muted: "#948DA3",
+  dim: "#948DA3",
   border: "rgba(255,255,255,0.08)",
 };
 
@@ -73,10 +75,9 @@ function StatCard({
       transition={{ delay, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       className="relative overflow-hidden"
       style={{
-        background: "var(--glass)",
-        backdropFilter: "blur(20px)",
-        border: "1px solid var(--border)",
-        borderRadius: "1.25rem",
+        background: "#221D2F",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: "20px",
         padding: "1.5rem",
       }}
     >
@@ -91,19 +92,19 @@ function StatCard({
 
       <div className="flex items-start justify-between mb-4">
         <div
-          className="w-12 h-12 rounded-xl flex items-center justify-center"
-          style={{ background: `${accent}22`, border: `1px solid ${accent}44` }}
+          className="w-12 h-12 rounded-full flex items-center justify-center"
+          style={{ background: `${accent}22`, border: `1px solid ${accent}33` }}
         >
           <Icon className="w-6 h-6" style={{ color: accent }} />
         </div>
       </div>
 
-      <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: C.muted }}>
+      <p className="text-xs font-bold uppercase tracking-wider mb-1 font-body" style={{ color: C.muted }}>
         {label}
       </p>
-      <p className="text-3xl font-black text-white mb-1">{value}</p>
+      <p className="text-3xl font-black text-white mb-1 font-display">{value}</p>
       {subtext && (
-        <p className="text-xs" style={{ color: C.dim }}>{subtext}</p>
+        <p className="text-xs font-body" style={{ color: C.dim }}>{subtext}</p>
       )}
     </motion.div>
   );
@@ -225,7 +226,7 @@ export default function AnalyticsPage() {
   const periodLabels: Record<Period, string> = { 7: "7 Days", 14: "14 Days", 30: "30 Days" };
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--void)" }}>
+    <div className="min-h-screen" style={{ background: "#151022" }}>
       {/* Ambient background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
         <div
@@ -271,10 +272,10 @@ export default function AnalyticsPage() {
               <BarChart3 className="w-7 h-7" style={{ color: "#fff" }} />
             </motion.div>
             <div>
-              <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+              <h1 className="text-3xl sm:text-4xl font-black font-display tracking-tight" style={{ color: "#CBC3DA" }}>
                 Analytics
               </h1>
-              <p className="text-sm font-bold uppercase tracking-[0.2em]" style={{ color: C.dim }}>
+              <p className="text-sm font-bold uppercase tracking-[0.2em] font-body" style={{ color: C.dim }}>
                 Taco Bell AI Drive-Through
               </p>
             </div>
@@ -288,11 +289,11 @@ export default function AnalyticsPage() {
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.96 }}
                 onClick={() => setPeriod(p)}
-                className="px-4 py-2 rounded-xl text-sm font-bold transition-all"
+                className="px-4 py-2 rounded-full text-sm font-bold transition-all font-body"
                 style={{
                   background: period === p ? C.purple : "rgba(255,255,255,0.04)",
                   color: period === p ? C.white : C.muted,
-                  border: `1px solid ${period === p ? C.purple : "var(--border)"}`,
+                  border: `1px solid ${period === p ? C.purple : "rgba(255,255,255,0.08)"}`,
                 }}
               >
                 {periodLabels[p]}
@@ -308,13 +309,13 @@ export default function AnalyticsPage() {
               <div
                 key={i}
                 className="h-36 rounded-2xl animate-pulse"
-                style={{ background: "var(--glass)", border: "1px solid var(--border)" }}
+                style={{ background: "#221D2F", border: "1px solid rgba(255,255,255,0.08)" }}
               />
             ))}
           </div>
         ) : !analytics ? (
           /* No data state */
-          <div className="text-center py-20" style={{ color: C.dim }}>
+          <div className="text-center py-20 font-body" style={{ color: C.dim }}>
             <p className="text-lg font-bold mb-2">No data available</p>
             <p className="text-sm">Place some orders to see analytics here.</p>
           </div>
@@ -335,7 +336,7 @@ export default function AnalyticsPage() {
                 label="Total Revenue"
                 value={`$${analytics.revenue.toFixed(2)}`}
                 subtext={`Last ${period} days`}
-                accent={C.green}
+                accent="#FFC247"
                 delay={0.1}
               />
               <StatCard
@@ -351,7 +352,7 @@ export default function AnalyticsPage() {
                 label="Completion Rate"
                 value={`${(analytics.completionRate * 100).toFixed(1)}%`}
                 subtext="Orders completed"
-                accent={C.yellow}
+                accent="#12D7F2"
                 delay={0.2}
               />
             </div>
@@ -362,11 +363,10 @@ export default function AnalyticsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.25 }}
-                className="p-5 rounded-2xl"
+                className="p-5 rounded-2xl font-body"
                 style={{
-                  background: "var(--glass)",
-                  backdropFilter: "blur(20px)",
-                  border: "1px solid var(--border)",
+                  background: "#221D2F",
+                  border: "1px solid rgba(255,255,255,0.08)",
                 }}
               >
                 <div className="flex items-center gap-2 mb-3">
@@ -375,7 +375,7 @@ export default function AnalyticsPage() {
                     Today
                   </span>
                 </div>
-                <p className="text-2xl font-black text-white">{analytics.todaysOrderCount}</p>
+                <p className="text-2xl font-black font-display" style={{ color: "#FFC247" }}>{analytics.todaysOrderCount}</p>
                 <p className="text-sm" style={{ color: C.dim }}>orders</p>
                 <p className="text-xl font-black mt-2" style={{ color: C.green }}>
                   ${analytics.todaysRevenue.toFixed(2)}
@@ -387,11 +387,10 @@ export default function AnalyticsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="p-5 rounded-2xl col-span-2"
+                className="p-5 rounded-2xl col-span-2 font-body"
                 style={{
-                  background: "var(--glass)",
-                  backdropFilter: "blur(20px)",
-                  border: "1px solid var(--border)",
+                  background: "#221D2F",
+                  border: "1px solid rgba(255,255,255,0.08)",
                 }}
               >
                 <div className="flex items-center gap-2 mb-4">
@@ -423,11 +422,10 @@ export default function AnalyticsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.35 }}
-                className="lg:col-span-2 p-6 rounded-2xl"
+                className="lg:col-span-2 p-6 rounded-2xl font-body"
                 style={{
-                  background: "var(--glass)",
-                  backdropFilter: "blur(20px)",
-                  border: "1px solid var(--border)",
+                  background: "#221D2F",
+                  border: "1px solid rgba(255,255,255,0.08)",
                 }}
               >
                 <h3 className="text-sm font-bold uppercase tracking-wider mb-4" style={{ color: C.muted }}>
@@ -455,11 +453,10 @@ export default function AnalyticsPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="lg:col-span-3 p-6 rounded-2xl overflow-hidden"
+                className="lg:col-span-3 p-6 rounded-2xl overflow-hidden font-body"
                 style={{
-                  background: "var(--glass)",
-                  backdropFilter: "blur(20px)",
-                  border: "1px solid var(--border)",
+                  background: "#221D2F",
+                  border: "1px solid rgba(255,255,255,0.08)",
                 }}
               >
                 <h3 className="text-sm font-bold uppercase tracking-wider mb-4" style={{ color: C.muted }}>
@@ -468,7 +465,7 @@ export default function AnalyticsPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                      <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
                         <th className="text-left py-2 px-2 font-bold uppercase tracking-wider text-xs" style={{ color: C.dim }}>#</th>
                         <th className="text-left py-2 px-2 font-bold uppercase tracking-wider text-xs" style={{ color: C.dim }}>Time</th>
                         <th className="text-left py-2 px-2 font-bold uppercase tracking-wider text-xs" style={{ color: C.dim }}>Items</th>
@@ -489,18 +486,18 @@ export default function AnalyticsPage() {
                         return (
                           <tr
                             key={order.id}
-                            style={{ borderBottom: `1px solid ${C.border}` }}
+                            style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
                             className="hover:bg-white/5 transition-colors"
                           >
-                            <td className="py-2.5 px-2 font-black text-white">#{order.orderNumber}</td>
-                            <td className="py-2.5 px-2" style={{ color: C.muted }}>
+                            <td className="py-2.5 px-2 font-black font-display" style={{ color: "#FFC247" }}>#{order.orderNumber}</td>
+                            <td className="py-2.5 px-2" style={{ color: "#948DA3" }}>
                               {formatDate(new Date(order.createdAt as number).toISOString())}
                             </td>
-                            <td className="py-2.5 px-2 text-white truncate max-w-[200px]">
+                            <td className="py-2.5 px-2 truncate max-w-[200px]" style={{ color: "#CBC3DA" }}>
                               {items.slice(0, 2).map((i: { name: string }) => i.name).join(", ")}
                               {items.length > 2 ? ` +${items.length - 2}` : ""}
                             </td>
-                            <td className="py-2.5 px-2 text-right font-bold" style={{ color: C.yellow }}>
+                            <td className="py-2.5 px-2 text-right font-bold font-display" style={{ color: "#FFC247" }}>
                               ${(order.total as number).toFixed(2)}
                             </td>
                             <td className="py-2.5 px-2 text-right">

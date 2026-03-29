@@ -7,11 +7,11 @@ import { MENU_ITEMS } from "@/app/data/menu";
 import { Plus, Minus, ShoppingBag, Flame } from "lucide-react";
 
 const CATEGORY_COLORS: Record<string, string> = {
-  tacos: "#FF4500",
-  burritos: "#FF6B35",
-  drinks: "#10B981",
-  sides: "#FFD23F",
-  specialties: "#7C3AED",
+  tacos: "#FF6A1F",
+  burritos: "#FFC247",
+  drinks: "#12D7F2",
+  sides: "#CEBDFF",
+  specialties: "#6D28FF",
 };
 
 const CATEGORIES = ["all", ...Array.from(new Set(MENU_ITEMS.map((i) => i.category)))];
@@ -51,18 +51,28 @@ function MenuItemCard({
   onUpdateQty: (delta: number) => void;
   onCustomize?: (itemId: string, price: number) => void;
 }) {
-  const catColor = CATEGORY_COLORS[item.category] || "var(--primary)";
+  const catColor = CATEGORY_COLORS[item.category] || "#6D28FF";
 
   return (
     <motion.div
       variants={cardVariants}
       whileHover="hover"
-      className="group relative rounded-2xl overflow-hidden cursor-pointer"
+      className="group relative overflow-hidden cursor-pointer"
       style={{
-        background: "var(--void-elevated)",
-        border: "1px solid var(--border)",
+        background: "#221D2F",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: "20px",
+        transition: "all 0.2s ease",
       }}
       onClick={qty === 0 ? onAdd : undefined}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLElement).style.background = "#2C273A";
+        (e.currentTarget as HTMLElement).style.boxShadow = "0 0 30px rgba(109,40,255,0.15)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.background = "#221D2F";
+        (e.currentTarget as HTMLElement).style.boxShadow = "none";
+      }}
     >
       {/* Category glow bar */}
       <div
@@ -76,17 +86,17 @@ function MenuItemCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               {item.category === "specialties" && (
-                <Flame className="w-3.5 h-3.5 text-[#FF4500] flex-shrink-0" />
+                <Flame className="w-3.5 h-3.5 text-[#FF6A1F] flex-shrink-0" />
               )}
               <span
-                className="text-[10px] font-bold uppercase tracking-widest"
+                className="text-[10px] font-bold uppercase tracking-widest font-display"
                 style={{ color: catColor }}
               >
                 {item.category}
               </span>
             </div>
-            <h3 className="font-bold text-white text-base leading-tight">{item.name}</h3>
-            <p className="text-[var(--text-muted)] text-xs mt-1 leading-relaxed line-clamp-2">
+            <h3 className="font-bold text-readable-body text-base leading-tight">{item.name}</h3>
+            <p className="text-xs mt-1 leading-relaxed line-clamp-2" style={{ color: "#948DA3" }}>
               {item.description}
             </p>
           </div>
@@ -94,23 +104,22 @@ function MenuItemCard({
           {/* Price */}
           <div className="flex-shrink-0 text-right">
             <span
-              className="text-lg font-black"
-              style={{ color: catColor }}
+              className="text-lg font-black font-display"
+              style={{ color: "#FFC247" }}
             >
               ${item.price.toFixed(2)}
             </span>
           </div>
         </div>
 
-        {/* Image */}
+        {/* Image placeholder */}
         <div
           className="w-full h-36 rounded-xl mb-4 overflow-hidden"
           style={{
-            background: "linear-gradient(135deg, rgba(255,107,53,0.15) 0%, rgba(124,58,237,0.1) 100%)",
+            background: "linear-gradient(135deg, rgba(109,40,255,0.15) 0%, rgba(206,189,255,0.08) 100%)",
           }}
         >
-          {/* Dark gradient overlay */}
-          <div className="w-full h-full bg-gradient-to-t from-[var(--void-elevated)] via-transparent to-transparent" />
+          <div className="w-full h-full bg-gradient-to-t from-[#221D2F] via-transparent to-transparent" />
         </div>
 
         {/* Add / Qty controls */}
@@ -118,17 +127,17 @@ function MenuItemCard({
           {qty === 0 ? (
             <button
               onClick={(e) => { e.stopPropagation(); onAdd(); }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200"
+              className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all duration-200"
               style={{
-                background: "var(--primary)",
+                background: "#6D28FF",
                 color: "white",
-                boxShadow: "0 4px 14px rgba(255,69,0,0.35)",
+                boxShadow: "0 4px 14px rgba(109,40,255,0.35)",
               }}
               onMouseEnter={(e) =>
-                (e.currentTarget.style.boxShadow = "0 6px 20px rgba(255,69,0,0.55)")
+                (e.currentTarget.style.boxShadow = "0 6px 20px rgba(109,40,255,0.55)")
               }
               onMouseLeave={(e) =>
-                (e.currentTarget.style.boxShadow = "0 4px 14px rgba(255,69,0,0.35)")
+                (e.currentTarget.style.boxShadow = "0 4px 14px rgba(109,40,255,0.35)")
               }
             >
               <Plus className="w-4 h-4" />
@@ -136,24 +145,24 @@ function MenuItemCard({
             </button>
           ) : (
             <div
-              className="flex items-center gap-3 px-3 py-1.5 rounded-xl"
+              className="flex items-center gap-3 px-3 py-1.5 rounded-full"
               style={{
-                background: "rgba(255,69,0,0.12)",
-                border: "1px solid rgba(255,69,0,0.25)",
+                background: "rgba(109,40,255,0.12)",
+                border: "1px solid rgba(109,40,255,0.25)",
               }}
             >
               <button
                 onClick={(e) => { e.stopPropagation(); onUpdateQty(-1); }}
-                className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-                style={{ background: "var(--void)", color: "white" }}
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+                style={{ background: "#2C273A", color: "#CBC3DA", border: "1px solid rgba(255,255,255,0.08)" }}
               >
                 <Minus className="w-3.5 h-3.5" />
               </button>
-              <span className="text-base font-black text-white w-5 text-center">{qty}</span>
+              <span className="text-base font-black text-readable-body w-5 text-center">{qty}</span>
               <button
                 onClick={(e) => { e.stopPropagation(); onUpdateQty(1); }}
-                className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-                style={{ background: "var(--primary)", color: "white" }}
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+                style={{ background: "#6D28FF", color: "white" }}
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
@@ -162,7 +171,7 @@ function MenuItemCard({
 
           {qty > 0 && (
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold" style={{ color: "var(--primary)" }}>
+              <span className="text-xs font-semibold" style={{ color: "#6D28FF" }}>
                 <ShoppingBag className="w-3.5 h-3.5 inline mr-1" />
                 In cart
               </span>
@@ -170,7 +179,7 @@ function MenuItemCard({
                 <button
                   onClick={(e) => { e.stopPropagation(); onCustomize(item.id, item.price); }}
                   className="text-xs font-semibold px-2 py-1 rounded-lg"
-                  style={{ background: "rgba(124,58,237,0.2)", color: "#9D5EFF", border: "1px solid rgba(124,58,237,0.3)" }}
+                  style={{ background: "rgba(109,40,255,0.2)", color: "#CEBDFF", border: "1px solid rgba(109,40,255,0.3)" }}
                 >
                   Customize
                 </button>
@@ -213,11 +222,11 @@ export default function MenuGrid({
       >
         <h2
           className="font-display text-6xl sm:text-7xl lg:text-8xl tracking-widest uppercase mb-4"
-          style={{ color: "var(--text)" }}
+          style={{ color: "#CBC3DA" }}
         >
-          Fire <span style={{ color: "var(--primary)" }}>Menu</span>
+          Fire <span style={{ color: "#FF6A1F" }}>Menu</span>
         </h2>
-        <p className="text-[var(--text-muted)] text-base sm:text-lg max-w-lg mx-auto leading-relaxed">
+        <p className="text-readable-body text-base sm:text-lg max-w-lg mx-auto leading-relaxed">
           Handcrafted favorites, ready when you are. Tap to add or use your voice.
         </p>
       </motion.div>
@@ -226,7 +235,7 @@ export default function MenuGrid({
       <div className="flex gap-3 overflow-x-auto pb-4 mb-10">
         {CATEGORIES.map((cat, i) => {
           const active = selectedCategory === cat || (cat === "all" && !selectedCategory);
-          const catColor = cat === "all" ? "var(--primary)" : (CATEGORY_COLORS[cat] || "var(--primary)");
+          const catColor = cat === "all" ? "#6D28FF" : (CATEGORY_COLORS[cat] || "#6D28FF");
           return (
             <motion.button
               key={cat}
@@ -235,19 +244,19 @@ export default function MenuGrid({
               viewport={{ once: true }}
               transition={{ delay: i * 0.04, duration: 0.4 }}
               onClick={() => setSelectedCategory(cat === selectedCategory ? null : cat)}
-              className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 whitespace-nowrap"
+              className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 whitespace-nowrap font-body"
               style={
                 active
                   ? {
-                      background: `linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%)`,
-                      color: "#0A0A0A",
-                      boxShadow: "0 4px 16px rgba(255,69,0,0.35)",
+                      background: "#6D28FF",
+                      color: "white",
+                      boxShadow: "0 4px 16px rgba(109,40,255,0.35)",
                       border: "none",
                     }
                   : {
                       background: "rgba(255,255,255,0.04)",
-                      color: "var(--text-muted)",
-                      border: "1px solid var(--border)",
+                      color: "#948DA3",
+                      border: "1px solid rgba(255,255,255,0.08)",
                     }
               }
             >

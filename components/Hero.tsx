@@ -15,10 +15,10 @@ function ScrollIndicator() {
       animate={{ opacity: 1 }}
       transition={{ delay: 2 }}
     >
-      <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-[var(--text-muted)]">
+      <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-outline">
         Scroll
       </span>
-      <ChevronDown className="w-4 h-4 text-[var(--text-muted)] animate-scroll-bounce" />
+      <ChevronDown className="w-4 h-4 text-outline animate-scroll-bounce" />
     </motion.div>
   );
 }
@@ -32,7 +32,7 @@ function VoiceVisualizer({ isListening, isSpeaking }: { isListening: boolean; is
           key={i}
           className="w-1 rounded-full"
           style={{
-            background: isSpeaking ? "var(--secondary)" : "var(--primary)",
+            background: isSpeaking ? "#FFC247" : "#12D7F2",
             height: "100%",
           }}
           animate={
@@ -95,6 +95,7 @@ export default function HeroVoiceSection({
     <section
       id="voice"
       className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden pt-16"
+      style={{ background: "#151022" }}
     >
       {/* Ambient background orbs */}
       <div className="ambient-bg" />
@@ -110,9 +111,9 @@ export default function HeroVoiceSection({
           <span
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest"
             style={{
-              background: "rgba(255,69,0,0.12)",
-              border: "1px solid rgba(255,69,0,0.3)",
-              color: "var(--primary)",
+              background: "rgba(109,40,255,0.15)",
+              border: "1px solid rgba(109,40,255,0.35)",
+              color: "#12D7F2",
             }}
           >
             <Sparkles className="w-3.5 h-3.5" />
@@ -120,7 +121,7 @@ export default function HeroVoiceSection({
           </span>
         </motion.div>
 
-        {/* Display headline — Bebas Neue, word-by-word */}
+        {/* Display headline — Space Grotesk, word-by-word */}
         <div ref={headlineRef} className="mb-10">
           <div className="font-display leading-[0.9] tracking-widest uppercase mb-1">
             {HEADLINE_LINE1.map((word, wi) => (
@@ -128,7 +129,7 @@ export default function HeroVoiceSection({
                 <motion.span
                   className="inline-block"
                   {...wordAnimation(0, wi)}
-                  style={{ color: wi === 0 ? "var(--primary)" : "var(--text)" }}
+                  style={{ color: wi === 0 ? "#FFC247" : "#CBC3DA" }}
                 >
                   {word}
                 </motion.span>
@@ -141,7 +142,7 @@ export default function HeroVoiceSection({
                 <motion.span
                   className="inline-block"
                   {...wordAnimation(1, wi)}
-                  style={{ color: wi === 1 ? "var(--secondary)" : "var(--text)" }}
+                  style={{ color: wi === 1 ? "#FF6A1F" : "#CBC3DA" }}
                 >
                   {word}
                 </motion.span>
@@ -155,7 +156,7 @@ export default function HeroVoiceSection({
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ delay: 0.9, duration: 0.6 }}
-          className="text-base sm:text-lg text-[var(--text-muted)] max-w-xl mx-auto mb-12 leading-relaxed"
+          className="text-base sm:text-lg text-readable-body max-w-xl mx-auto mb-12 leading-relaxed"
         >
           Speak naturally. Order anything. No app downloads, no typing — just talk and we&apos;ll fire up your meal.
         </motion.p>
@@ -167,9 +168,9 @@ export default function HeroVoiceSection({
           transition={{ delay: 1.1, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="relative overflow-hidden rounded-3xl mb-8"
           style={{
-            background: "rgba(10,10,10,0.7)",
+            background: "rgba(21,16,34,0.8)",
             backdropFilter: "blur(24px)",
-            border: "1px solid var(--border)",
+            border: "1px solid rgba(255,255,255,0.08)",
           }}
         >
           {/* Inner glow */}
@@ -178,10 +179,10 @@ export default function HeroVoiceSection({
             style={{
               background: `radial-gradient(circle, ${
                 isSpeaking
-                  ? "rgba(255,69,0,0.18)"
+                  ? "rgba(255,106,31,0.18)"
                   : isConnected
-                  ? "rgba(255,184,0,0.15)"
-                  : "rgba(255,107,53,0.10)"
+                  ? "rgba(255,194,71,0.15)"
+                  : "rgba(18,215,242,0.10)"
               } 0%, transparent 70%)`,
             }}
           />
@@ -193,11 +194,11 @@ export default function HeroVoiceSection({
               <button
                 onClick={isConnected ? onDisconnect : onConnect}
                 className={`relative w-32 h-32 sm:w-36 sm:h-36 rounded-full flex items-center justify-center transition-all duration-300 voice-btn-ring ${
-                  isConnected ? "" : "bg-[var(--void-elevated)]"
+                  isConnected ? "" : "bg-surface-high"
                 }`}
                 style={
                   isConnected
-                    ? { background: "linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)" }
+                    ? { background: "linear-gradient(135deg, #6D28FF 0%, #CEBDFF 100%)" }
                     : {}
                 }
                 aria-label={isConnected ? "End voice order" : "Start voice order"}
@@ -212,19 +213,19 @@ export default function HeroVoiceSection({
                   className="w-24 h-24 sm:w-28 sm:h-28 rounded-full flex items-center justify-center"
                   style={{
                     background: isSpeaking
-                      ? "rgba(10,10,10,0.2)"
+                      ? "rgba(21,16,34,0.2)"
                       : isConnected
-                      ? "rgba(10,10,10,0.15)"
-                      : "var(--void-elevated)",
-                    border: isConnected ? "3px solid rgba(255,184,0,0.5)" : "2px solid var(--border)",
+                      ? "rgba(21,16,34,0.15)"
+                      : "#2C273A",
+                    border: isConnected ? "3px solid rgba(255,194,71,0.5)" : "2px solid rgba(255,255,255,0.08)",
                   }}
                 >
                   {isSpeaking ? (
-                    <Volume2 className="w-12 h-12 sm:w-14 sm:h-14" style={{ color: "#0A0A0A" }} />
+                    <Volume2 className="w-12 h-12 sm:w-14 sm:h-14" style={{ color: "#FFC247" }} />
                   ) : isConnected ? (
                     <Mic className="w-12 h-12 sm:w-14 sm:h-14 text-white" />
                   ) : (
-                    <Mic className="w-12 h-12 sm:w-14 sm:h-14 text-[var(--primary)]" />
+                    <Mic className="w-12 h-12 sm:w-14 sm:h-14" style={{ color: "#12D7F2" }} />
                   )}
                 </motion.div>
               </button>
@@ -236,12 +237,12 @@ export default function HeroVoiceSection({
                     animate={{ opacity: [1, 0.4, 1] }}
                     transition={{ duration: 1.2, repeat: Infinity }}
                     className="inline-block w-2 h-2 rounded-full"
-                    style={{ background: "#10B981" }}
+                    style={{ background: "#12D7F2" }}
                   />
                 ) : null}
                 <span
                   className="text-xs font-bold uppercase tracking-widest"
-                  style={{ color: isConnected ? "#10B981" : "var(--text-muted)" }}
+                  style={{ color: isConnected ? "#12D7F2" : "#948DA3" }}
                 >
                   {isConnected ? "Listening" : "Tap to order"}
                 </span>
@@ -256,8 +257,8 @@ export default function HeroVoiceSection({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.3 }}
-                className="text-xl sm:text-2xl lg:text-3xl font-bold leading-snug"
-                style={{ color: "var(--text)" }}
+                className="text-xl sm:text-2xl lg:text-3xl font-bold leading-snug font-display"
+                style={{ color: "#CBC3DA" }}
               >
                 {aiMessage}
               </motion.p>
@@ -267,14 +268,14 @@ export default function HeroVoiceSection({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="mt-3 text-sm italic"
-                  style={{ color: "var(--secondary)" }}
+                  style={{ color: "#FFC247" }}
                 >
                   &ldquo;{transcript}&rdquo;
                 </motion.p>
               )}
 
               {error && (
-                <p className="mt-3 text-sm" style={{ color: "var(--red)" }}>
+                <p className="mt-3 text-sm" style={{ color: "#EF4444" }}>
                   {error}
                 </p>
               )}
@@ -301,9 +302,9 @@ export default function HeroVoiceSection({
             whileTap={{ scale: 0.97 }}
             className="glow-pulse inline-flex items-center gap-3 px-10 py-4 rounded-full text-base font-bold uppercase tracking-widest"
             style={{
-              background: "linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%)",
-              color: "#0A0A0A",
-              boxShadow: "0 8px 32px rgba(255,69,0,0.4)",
+              background: "#FF6A1F",
+              color: "white",
+              boxShadow: "0 8px 32px rgba(255,106,31,0.4)",
             }}
           >
             {isConnected ? (

@@ -348,7 +348,7 @@ function CartDrawer({ isOpen, onClose, cart, cartTotal, onUpdateQty, onRemove, o
             transition={{ duration: 0.25 }}
             onClick={onClose}
             className="fixed inset-0 z-50"
-            style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
+            style={{ background: "rgba(21,16,34,0.8)", backdropFilter: "blur(12px)" }}
           />
 
           {/* Drawer */}
@@ -360,32 +360,33 @@ function CartDrawer({ isOpen, onClose, cart, cartTotal, onUpdateQty, onRemove, o
             transition={{ type: "spring", damping: 28, stiffness: 200 }}
             className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md flex flex-col"
             style={{
-              background: "linear-gradient(180deg, var(--void-light) 0%, var(--void) 100%)",
-              borderLeft: "1px solid var(--border)",
+              background: "#2C273A",
+              borderLeft: "1px solid rgba(255,255,255,0.08)",
             }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-6" style={{ borderBottom: "1px solid var(--border)" }}>
+            <div className="flex items-center justify-between p-6" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
               <div className="flex items-center gap-3">
                 <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center"
-                  style={{ background: "linear-gradient(135deg, var(--orange), var(--yellow))" }}
+                  className="w-10 h-10 rounded-full flex items-center justify-center"
+                  style={{ background: "linear-gradient(135deg, #6D28FF, #CEBDFF)" }}
                 >
-                  <ShoppingBag className="w-5 h-5" style={{ color: "#0a0612" }} />
+                  <ShoppingBag className="w-5 h-5" style={{ color: "white" }} />
                 </div>
                 <div>
-                  <h2 className="font-bold text-white text-xl">Your Order</h2>
-                  <p className="text-sm" style={{ color: "var(--gray-400)" }}>{cartCount} items</p>
+                  <h2 className="font-bold text-readable-body text-xl font-display">Your Order</h2>
+                  <p className="text-sm font-body" style={{ color: "#948DA3" }}>{cartCount} items</p>
                 </div>
               </div>
               <motion.button
-                whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.1)" }}
+                whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.92 }}
                 onClick={onClose}
-                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                className="w-10 h-10 rounded-full flex items-center justify-center"
+                style={{ background: "rgba(255,255,255,0.06)" }}
                 aria-label="Close cart"
               >
-                <X className="w-5 h-5 text-white" />
+                <X className="w-5 h-5 text-readable-body" />
               </motion.button>
             </div>
 
@@ -397,11 +398,11 @@ function CartDrawer({ isOpen, onClose, cart, cartTotal, onUpdateQty, onRemove, o
                   animate={{ opacity: 1, y: 0 }}
                   className="flex flex-col items-center justify-center h-full text-center py-16"
                 >
-                  <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4" style={{ background: "rgba(124,58,237,0.15)" }}>
-                    <ShoppingBag className="w-10 h-10" style={{ color: "var(--purple)" }} />
+                  <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4" style={{ background: "rgba(109,40,255,0.15)" }}>
+                    <ShoppingBag className="w-10 h-10" style={{ color: "#6D28FF" }} />
                   </div>
-                  <h3 className="text-white font-bold text-lg mb-1">Your cart is empty</h3>
-                  <p className="text-sm max-w-[240px]" style={{ color: "var(--gray-400)" }}>
+                  <h3 className="text-readable-body font-bold text-lg mb-1 font-display">Your cart is empty</h3>
+                  <p className="text-sm max-w-[240px]" style={{ color: "#948DA3" }}>
                     Add some fire items from the menu above!
                   </p>
                 </motion.div>
@@ -414,20 +415,20 @@ function CartDrawer({ isOpen, onClose, cart, cartTotal, onUpdateQty, onRemove, o
                       layout
                       className="p-4"
                       style={{
-                        background: "var(--glass)",
-                        backdropFilter: "blur(20px)",
-                        border: "1px solid var(--border)",
-                        borderRadius: "1rem",
+                        background: "#221D2F",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        borderRadius: "16px",
                       }}
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div>
-                          <h4 className="font-bold text-white">{item.name}</h4>
-                          <p className="text-sm" style={{ color: "var(--gray-400)" }}>${item.price.toFixed(2)} each</p>
+                          <h4 className="font-bold text-readable-body">{item.name}</h4>
+                          <p className="text-sm" style={{ color: "#948DA3" }}>${item.price.toFixed(2)} each</p>
                         </div>
                         <button
                           onClick={() => onRemove(item.id)}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all"
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-[#FF6A1F] hover:text-[#FF4500] transition-all"
+                          style={{ background: "rgba(255,106,31,0.1)" }}
                           aria-label={`Remove ${item.name}`}
                         >
                           <Trash2 className="w-4 h-4" />
@@ -435,26 +436,27 @@ function CartDrawer({ isOpen, onClose, cart, cartTotal, onUpdateQty, onRemove, o
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 bg-white/5 border border-[var(--border)] rounded-xl p-1">
+                        <div className="flex items-center gap-2 rounded-full p-1"
+                          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
                           <button
                             onClick={() => onUpdateQty(item.id, -1)}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-                            style={{ background: "rgba(124,58,237,0.2)", color: "var(--purple-light)" }}
+                            className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                            style={{ background: "rgba(109,40,255,0.2)", color: "#CEBDFF" }}
                             aria-label="Decrease"
                           >
                             <Minus className="w-3 h-3" />
                           </button>
-                          <span className="w-6 text-center font-bold text-white">{item.quantity}</span>
+                          <span className="w-6 text-center font-bold text-readable-body">{item.quantity}</span>
                           <button
                             onClick={() => onUpdateQty(item.id, 1)}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center"
-                            style={{ background: "linear-gradient(135deg, var(--yellow), var(--orange))", color: "#0a0612" }}
+                            className="w-8 h-8 rounded-full flex items-center justify-center"
+                            style={{ background: "#6D28FF", color: "white" }}
                             aria-label="Increase"
                           >
                             <Plus className="w-3 h-3" />
                           </button>
                         </div>
-                        <span className="font-bold text-lg" style={{ color: "var(--yellow)" }}>
+                        <span className="font-bold text-lg font-display" style={{ color: "#FFC247" }}>
                           ${(item.price * item.quantity).toFixed(2)}
                         </span>
                       </div>
@@ -468,19 +470,19 @@ function CartDrawer({ isOpen, onClose, cart, cartTotal, onUpdateQty, onRemove, o
             {cart.length > 0 && (
               <div
                 className="p-6 space-y-4"
-                style={{ borderTop: "1px solid var(--border)", background: "linear-gradient(to top, var(--void) 0%, transparent 100%)" }}
+                style={{ borderTop: "1px solid rgba(255,255,255,0.08)", background: "linear-gradient(to top, #1E192B 0%, transparent 100%)" }}
               >
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm" style={{ color: "var(--gray-400)" }}>
+                  <div className="flex justify-between text-sm font-body" style={{ color: "#948DA3" }}>
                     <span>Subtotal</span>
                     <span>${cartTotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-sm" style={{ color: "var(--gray-400)" }}>
+                  <div className="flex justify-between text-sm font-body" style={{ color: "#948DA3" }}>
                     <span>Tax (8%)</span>
                     <span>${tax.toFixed(2)}</span>
                   </div>
                   {points !== undefined && tier && (
-                    <div className="flex justify-between text-xs items-center" style={{ color: "var(--purple-light)" }}>
+                    <div className="flex justify-between text-xs items-center font-body" style={{ color: "#12D7F2" }}>
                       <span className="flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5" />
                         {tier.name} · {points.toLocaleString()} pts
@@ -488,8 +490,8 @@ function CartDrawer({ isOpen, onClose, cart, cartTotal, onUpdateQty, onRemove, o
                       <span>{tier.discount > 0 ? `${tier.discount}% off` : "Earn 1 pt/$"}</span>
                     </div>
                   )}
-                  <div className="flex justify-between font-bold text-xl pt-2" style={{ borderTop: "1px solid var(--border)" }}>
-                    <span className="text-white">Total</span>
+                  <div className="flex justify-between font-bold text-xl pt-2 font-display" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                    <span className="text-readable-body">Total</span>
                     <span className="gradient-text-fire">${total.toFixed(2)}</span>
                   </div>
                 </div>
@@ -498,14 +500,14 @@ function CartDrawer({ isOpen, onClose, cart, cartTotal, onUpdateQty, onRemove, o
                   whileHover={{ scale: 1.02, y: -1 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={onCheckout}
-                  className="w-full py-4 text-base font-bold rounded-xl flex items-center justify-center gap-2"
+                  className="w-full py-4 text-base font-bold rounded-full flex items-center justify-center gap-2 font-body transition-all duration-200"
                   style={{
-                    background: "linear-gradient(135deg, var(--yellow) 0%, var(--orange) 100%)",
-                    color: "#0a0612",
-                    boxShadow: "0 4px 20px rgba(255,107,53,0.3)",
+                    background: "#FF6A1F",
+                    color: "white",
+                    boxShadow: "0 4px 20px rgba(255,106,31,0.35)",
                   }}
                 >
-                  Checkout
+                  Place Order
                   <ArrowRight className="w-5 h-5" />
                 </motion.button>
               </div>
@@ -549,7 +551,7 @@ function ConfirmModal({ cart, cartTotal, onConfirm, onEdit }: {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(16px)" }}
+      style={{ background: "rgba(21,16,34,0.85)", backdropFilter: "blur(16px)" }}
     >
       <motion.div
         initial={{ scale: 0.92, opacity: 0, y: 20 }}
@@ -558,22 +560,22 @@ function ConfirmModal({ cart, cartTotal, onConfirm, onEdit }: {
         transition={{ type: "spring", stiffness: 300, damping: 22 }}
         className="w-full max-w-lg max-h-[90vh] overflow-y-auto p-8"
         style={{
-          background: "var(--void-light)",
-          border: "1px solid var(--border)",
-          borderRadius: "1.5rem",
+          background: "#373245",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: "24px",
         }}
       >
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, var(--yellow), var(--orange))" }}
+            className="w-12 h-12 rounded-full flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg, #6D28FF, #CEBDFF)" }}
           >
-            <Check className="w-6 h-6" style={{ color: "#0a0612" }} />
+            <Check className="w-6 h-6" style={{ color: "white" }} />
           </div>
           <div>
-            <h3 className="font-bold text-white text-2xl">Confirm Order</h3>
-            <p className="text-sm" style={{ color: "var(--gray-400)" }}>Review your items before we fire them up</p>
+            <h3 className="font-bold text-readable-body text-2xl font-display">Confirm Order</h3>
+            <p className="text-sm font-body" style={{ color: "#948DA3" }}>Review your items before we fire them up</p>
           </div>
         </div>
 
@@ -585,19 +587,19 @@ function ConfirmModal({ cart, cartTotal, onConfirm, onEdit }: {
               initial={{ opacity: 0, x: -12 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.06 }}
-              className="flex justify-between items-center py-3"
-              style={{ borderBottom: "1px solid var(--border)" }}
+              className="flex justify-between items-center py-3 font-body"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
             >
               <div className="flex items-center gap-3">
                 <span
-                  className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm"
-                  style={{ background: "rgba(124,58,237,0.25)", color: "var(--purple-light)" }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm"
+                  style={{ background: "rgba(109,40,255,0.2)", color: "#CEBDFF" }}
                 >
                   {item.quantity}
                 </span>
-                <span className="font-semibold text-white">{item.name}</span>
+                <span className="font-semibold text-readable-body">{item.name}</span>
               </div>
-              <span className="font-bold" style={{ color: "var(--yellow)" }}>
+              <span className="font-bold font-display" style={{ color: "#FFC247" }}>
                 ${(item.price * item.quantity).toFixed(2)}
               </span>
             </motion.div>
@@ -605,8 +607,8 @@ function ConfirmModal({ cart, cartTotal, onConfirm, onEdit }: {
         </div>
 
         {/* Special Instructions */}
-        <div style={{ borderTop: "1px solid var(--border)", paddingTop: "0.75rem", marginTop: "0.75rem" }}>
-          <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--gray-400)" }}>
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "0.75rem", marginTop: "0.75rem" }}>
+          <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 font-body" style={{ color: "#948DA3" }}>
             Special Instructions (optional)
           </label>
           <input
@@ -614,14 +616,20 @@ function ConfirmModal({ cart, cartTotal, onConfirm, onEdit }: {
             value={specialInstructions}
             onChange={(e) => setSpecialInstructions(e.target.value)}
             placeholder="e.g., extra napkins, no salt..."
-            className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder:text-[var(--gray-600)]"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid var(--border)" }}
+            className="w-full px-3 py-2.5 rounded-xl text-sm font-body text-readable-body placeholder:text-[#948DA3] transition-all duration-200"
+            style={{
+              background: "#151022",
+              border: "1px solid rgba(255,255,255,0.08)",
+              outline: "none",
+            }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "#12D7F2")}
+            onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)")}
           />
         </div>
 
         {/* Phone Number */}
         <div style={{ paddingTop: "0.75rem", marginTop: "0.75rem" }}>
-          <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--gray-400)" }}>
+          <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 font-body" style={{ color: "#948DA3" }}>
             Phone (optional) — for order updates
           </label>
           <input
@@ -629,23 +637,29 @@ function ConfirmModal({ cart, cartTotal, onConfirm, onEdit }: {
             value={customerPhone}
             onChange={(e) => setCustomerPhone(e.target.value)}
             placeholder="(555) 123-4567"
-            className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder:text-[var(--gray-600)]"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid var(--border)" }}
+            className="w-full px-3 py-2.5 rounded-xl text-sm font-body text-readable-body placeholder:text-[#948DA3] transition-all duration-200"
+            style={{
+              background: "#151022",
+              border: "1px solid rgba(255,255,255,0.08)",
+              outline: "none",
+            }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "#12D7F2")}
+            onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)")}
           />
         </div>
 
         {/* Totals */}
-        <div className="space-y-2 mb-6" style={{ borderTop: "2px solid var(--border)", paddingTop: "1rem" }}>
-          <div className="flex justify-between text-sm" style={{ color: "var(--gray-400)" }}>
+        <div className="space-y-2 mb-6 font-body" style={{ borderTop: "2px solid rgba(255,255,255,0.08)", paddingTop: "1rem" }}>
+          <div className="flex justify-between text-sm" style={{ color: "#948DA3" }}>
             <span>Subtotal</span>
             <span>${cartTotal.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between text-sm" style={{ color: "var(--gray-400)" }}>
+          <div className="flex justify-between text-sm" style={{ color: "#948DA3" }}>
             <span>Tax (8%)</span>
             <span>${tax.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between font-bold text-2xl pt-2">
-            <span className="text-white">Total</span>
+          <div className="flex justify-between font-bold text-2xl pt-2 font-display">
+            <span className="text-readable-body">Total</span>
             <span className="gradient-text-fire">${total.toFixed(2)}</span>
           </div>
         </div>
@@ -656,11 +670,11 @@ function ConfirmModal({ cart, cartTotal, onConfirm, onEdit }: {
             whileHover={{ scale: 1.02, y: -1 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => onConfirm(specialInstructions, customerPhone)}
-            className="w-full py-4 text-base font-bold rounded-xl flex items-center justify-center gap-2"
+            className="w-full py-4 text-base font-bold rounded-full flex items-center justify-center gap-2 font-body transition-all duration-200"
             style={{
-              background: "linear-gradient(135deg, var(--yellow) 0%, var(--orange) 100%)",
-              color: "#0a0612",
-              boxShadow: "0 4px 20px rgba(255,107,53,0.3)",
+              background: "#6D28FF",
+              color: "white",
+              boxShadow: "0 4px 20px rgba(109,40,255,0.4)",
             }}
           >
             <Check className="w-5 h-5" />
@@ -669,11 +683,11 @@ function ConfirmModal({ cart, cartTotal, onConfirm, onEdit }: {
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={onEdit}
-            className="w-full py-3.5 text-base font-semibold rounded-xl flex items-center justify-center gap-2"
+            className="w-full py-3.5 text-base font-semibold rounded-full flex items-center justify-center gap-2 font-body transition-all duration-200"
             style={{
-              background: "rgba(255,255,255,0.05)",
-              color: "var(--white)",
-              border: "1px solid var(--border-hover)",
+              background: "rgba(255,255,255,0.04)",
+              color: "#CBC3DA",
+              border: "1px solid rgba(255,255,255,0.08)",
             }}
           >
             <Edit3 className="w-4 h-4" />
@@ -681,7 +695,7 @@ function ConfirmModal({ cart, cartTotal, onConfirm, onEdit }: {
           </motion.button>
         </div>
 
-        <p className="text-center text-xs mt-4" style={{ color: "var(--gray-600)" }}>
+        <p className="text-center text-xs mt-4 font-body" style={{ color: "#948DA3" }}>
           Say &quot;yes&quot; or &quot;place order&quot; to confirm with your voice
         </p>
       </motion.div>
@@ -721,7 +735,7 @@ function CustomizationModal({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(16px)" }}
+      style={{ background: "rgba(21,16,34,0.85)", backdropFilter: "blur(16px)" }}
     >
       <motion.div
         initial={{ scale: 0.92, opacity: 0, y: 20 }}
@@ -730,17 +744,17 @@ function CustomizationModal({
         transition={{ type: "spring", stiffness: 300, damping: 22 }}
         className="w-full max-w-md max-h-[90vh] overflow-y-auto p-6"
         style={{
-          background: "var(--void-light)",
-          border: "1px solid var(--border)",
-          borderRadius: "1.5rem",
+          background: "#373245",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: "24px",
         }}
       >
         <div className="flex items-center justify-between mb-5">
-          <h3 className="font-bold text-white text-xl">Customize</h3>
+          <h3 className="font-bold text-readable-body text-xl font-display">Customize</h3>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: "rgba(255,255,255,0.05)", color: "var(--gray-400)" }}
+            className="w-8 h-8 rounded-full flex items-center justify-center"
+            style={{ background: "rgba(255,255,255,0.06)", color: "#948DA3" }}
           >
             <X className="w-4 h-4" />
           </button>
@@ -748,10 +762,10 @@ function CustomizationModal({
 
         {!hasOptions ? (
           <div className="text-center py-8">
-            <p className="text-sm" style={{ color: "var(--gray-400)" }}>
+            <p className="text-sm font-body" style={{ color: "#948DA3" }}>
               No customization options available for this item.
             </p>
-            <p className="text-white font-semibold mt-2">${basePrice.toFixed(2)}</p>
+            <p className="text-readable-body font-semibold mt-2 font-display">${basePrice.toFixed(2)}</p>
           </div>
         ) : (
           <div className="space-y-3 mb-6">
@@ -764,30 +778,30 @@ function CustomizationModal({
                   onClick={() => toggleCustomization(itemId, option)}
                   className="w-full flex items-center justify-between p-4 rounded-xl transition-all"
                   style={{
-                    background: isSelected ? "rgba(124,58,237,0.2)" : "rgba(255,255,255,0.04)",
-                    border: `1px solid ${isSelected ? "var(--purple)" : "var(--border)"}`,
+                    background: isSelected ? "rgba(109,40,255,0.2)" : "rgba(255,255,255,0.04)",
+                    border: `1px solid ${isSelected ? "#6D28FF" : "rgba(255,255,255,0.08)"}`,
                   }}
                 >
                   <div className="flex items-center gap-3">
                     <div
                       className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
                       style={{
-                        background: isSelected ? "var(--purple)" : "transparent",
-                        border: `2px solid ${isSelected ? "var(--purple)" : "var(--gray-400)"}`,
+                        background: isSelected ? "#6D28FF" : "transparent",
+                        border: `2px solid ${isSelected ? "#6D28FF" : "#948DA3"}`,
                       }}
                     >
                       {isSelected && <Check className="w-3 h-3 text-white" />}
                     </div>
                     <div className="text-left">
-                      <p className="font-semibold text-white text-sm">{option.name}</p>
-                      <p className="text-xs capitalize" style={{ color: option.type === "add" ? "var(--green)" : option.type === "remove" ? "var(--red)" : "var(--gray-400)" }}>
+                      <p className="font-semibold text-readable-body text-sm font-body">{option.name}</p>
+                      <p className="text-xs capitalize font-body" style={{ color: option.type === "add" ? "#12D7F2" : option.type === "remove" ? "#EF4444" : "#948DA3" }}>
                         {option.type}
                       </p>
                     </div>
                   </div>
                   <span
-                    className="text-sm font-bold"
-                    style={{ color: option.price > 0 ? "var(--yellow)" : option.price < 0 ? "var(--green)" : "var(--gray-400)" }}
+                    className="text-sm font-bold font-display"
+                    style={{ color: option.price > 0 ? "#FFC247" : option.price < 0 ? "#12D7F2" : "#948DA3" }}
                   >
                     {option.price > 0 ? `+$${option.price.toFixed(2)}` : option.price < 0 ? `-$${Math.abs(option.price).toFixed(2)}` : "Free"}
                   </span>
@@ -798,26 +812,26 @@ function CustomizationModal({
         )}
 
         <div className="space-y-3">
-          <div className="flex justify-between items-center py-3" style={{ borderTop: "1px solid var(--border)" }}>
-            <span className="text-white font-bold">Total</span>
-            <span className="text-2xl font-black gradient-text-fire">${finalPrice.toFixed(2)}</span>
+          <div className="flex justify-between items-center py-3 font-body" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+            <span className="text-readable-body font-bold">Total</span>
+            <span className="text-2xl font-black font-display gradient-text-fire">${finalPrice.toFixed(2)}</span>
           </div>
           <div className="flex gap-3">
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={onClose}
-              className="flex-1 py-3.5 text-base font-semibold rounded-xl"
-              style={{ background: "rgba(255,255,255,0.05)", color: "white", border: "1px solid var(--border)" }}
+              className="flex-1 py-3.5 text-base font-semibold rounded-full font-body"
+              style={{ background: "rgba(255,255,255,0.04)", color: "#CBC3DA", border: "1px solid rgba(255,255,255,0.08)" }}
             >
               Cancel
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={() => onConfirm(finalPrice, selectedCustomizations)}
-              className="flex-1 py-3.5 text-base font-bold rounded-xl"
+              className="flex-1 py-3.5 text-base font-bold rounded-full font-body"
               style={{
-                background: "linear-gradient(135deg, var(--yellow) 0%, var(--orange) 100%)",
-                color: "#0a0612",
+                background: "#6D28FF",
+                color: "white",
               }}
             >
               {hasOptions ? "Add Customizations" : "Add to Order"}
@@ -835,7 +849,7 @@ function OrderComplete({ orderNumber, pointsEarned, totalPoints }: { orderNumber
     id: i,
     x: Math.random() * 100,
     delay: Math.random() * 1.5,
-    color: ["#FF6B35", "#FFD23F", "#7C3AED", "#9D5EFF"][Math.floor(Math.random() * 4)],
+    color: ["#FF6A1F", "#FFC247", "#6D28FF", "#12D7F2"][Math.floor(Math.random() * 4)],
     size: 6 + Math.random() * 8,
   }));
 
@@ -844,9 +858,22 @@ function OrderComplete({ orderNumber, pointsEarned, totalPoints }: { orderNumber
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: "linear-gradient(135deg, #FF6B35 0%, #FFD23F 50%, #7C3AED 100%)" }}
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
+      style={{ background: "#151022" }}
     >
+      {/* Ambient glow */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse 80% 80% at 50% 40%, rgba(109,40,255,0.2) 0%, transparent 60%), " +
+              "radial-gradient(ellipse 60% 60% at 30% 70%, rgba(255,106,31,0.12) 0%, transparent 60%), " +
+              "radial-gradient(ellipse 60% 60% at 70% 80%, rgba(255,194,71,0.1) 0%, transparent 60%)",
+          }}
+        />
+      </div>
+
       {/* Confetti */}
       {confettiPieces.map((piece) => (
         <motion.div
@@ -869,23 +896,27 @@ function OrderComplete({ orderNumber, pointsEarned, totalPoints }: { orderNumber
         initial={{ scale: 0.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 280, damping: 18, delay: 0.2 }}
-        className="text-center relative z-10"
+        className="text-center relative z-10 px-4"
       >
         {/* Animated icon */}
         <motion.div
           animate={{ rotate: [0, 15, -10, 12, 0] }}
           transition={{ duration: 0.8, delay: 0.4 }}
           className="w-32 h-32 mx-auto mb-8 rounded-full flex items-center justify-center"
-          style={{ background: "#0a0612", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}
+          style={{
+            background: "#221D2F",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(109,40,255,0.35)",
+          }}
         >
-          <Flame className="w-16 h-16" style={{ color: "#FFD23F" }} />
+          <Check className="w-16 h-16" style={{ color: "#6D28FF" }} />
         </motion.div>
 
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="font-black text-5xl mb-3" style={{ color: "#0a0612" }}
+          className="font-display font-black text-5xl mb-3 tracking-widest uppercase"
+          style={{ color: "#FFC247" }}
         >
           Order Placed!
         </motion.h2>
@@ -894,7 +925,8 @@ function OrderComplete({ orderNumber, pointsEarned, totalPoints }: { orderNumber
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7 }}
-          className="text-lg font-semibold mb-6" style={{ color: "rgba(10,6,18,0.8)" }}
+          className="text-lg font-semibold mb-6 font-body"
+          style={{ color: "#CBC3DA" }}
         >
           Your order number is
         </motion.p>
@@ -905,14 +937,15 @@ function OrderComplete({ orderNumber, pointsEarned, totalPoints }: { orderNumber
           transition={{ type: "spring", stiffness: 300, damping: 15, delay: 0.8 }}
           className="inline-block"
         >
-          <span className="font-black text-8xl" style={{ color: "#0a0612" }}>#{orderNumber}</span>
+          <span className="font-display font-black text-8xl" style={{ color: "#FFC247" }}>#{orderNumber}</span>
         </motion.div>
 
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.1 }}
-          className="mt-8 text-sm font-medium" style={{ color: "rgba(10,6,18,0.6)" }}
+          className="mt-8 text-sm font-medium font-body"
+          style={{ color: "#948DA3" }}
         >
           Pull forward when you see your number called
         </motion.p>
@@ -922,8 +955,12 @@ function OrderComplete({ orderNumber, pointsEarned, totalPoints }: { orderNumber
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 1.3 }}
-            className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-full"
-            style={{ background: "rgba(10,6,18,0.2)", color: "#0a0612" }}
+            className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-body"
+            style={{
+              background: "rgba(18,215,242,0.12)",
+              border: "1px solid rgba(18,215,242,0.3)",
+              color: "#12D7F2",
+            }}
           >
             <Sparkles className="w-4 h-4" />
             <span className="font-bold text-sm">+{pointsEarned} points earned!</span>

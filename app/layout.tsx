@@ -1,19 +1,7 @@
 import type { Metadata } from "next";
-import { Inter, Bebas_Neue } from "next/font/google";
 import "./globals.css";
 import ClientInit from "./ClientInit";
 import { Providers } from "./providers";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
-
-const bebasNeue = Bebas_Neue({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-display",
-});
 
 export const metadata: Metadata = {
   title: "Taco Bell AI Drive-Through",
@@ -26,8 +14,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="bg-[var(--void)]">
-      <body className={`${inter.variable} ${bebasNeue.variable} font-sans antialiased bg-[var(--void)]`}>
+    <html lang="en">
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="font-body antialiased" style={{ backgroundColor: '#151022' }}>
         <Providers>
           <ClientInit />
           {children}

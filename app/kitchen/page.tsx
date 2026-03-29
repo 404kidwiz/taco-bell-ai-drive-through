@@ -15,19 +15,21 @@ import Nav from "../../components/Nav";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
-  void: "var(--void)",
-  voidLight: "var(--void-light)",
-  voidElevated: "var(--void-elevated)",
-  orange: "#FF6B35",
-  yellow: "#FFD23F",
-  purple: "#7C3AED",
-  purpleLight: "#9D5EFF",
-  green: "#10B981",
+  void: "#151022",
+  voidLight: "#1E192B",
+  voidElevated: "#221D2F",
+  surfaceHighest: "#373245",
+  orange: "#FF6A1F",
+  yellow: "#FFC247",
+  purple: "#6D28FF",
+  purpleLight: "#CEBDFF",
+  green: "#12D7F2",
   red: "#EF4444",
-  warning: "#F59E0B",
+  warning: "#FFC247",
   white: "#FFFFFF",
-  muted: "#9CA3AF",
-  dim: "#4B5563",
+  readableBody: "#CBC3DA",
+  muted: "#948DA3",
+  dim: "#948DA3",
   border: "rgba(255,255,255,0.08)",
   borderHover: "rgba(255,255,255,0.15)",
 };
@@ -107,16 +109,16 @@ function OrderCard({ order, onUpdateStatus }: {
   const grandTotal = itemsTotal * 1.08;
 
   const getStatusColor = () => {
-    if (order.status === "pending") return { bg: "rgba(255,210,63,0.15)", color: C.yellow, border: "rgba(255,210,63,0.4)" };
-    if (order.status === "in-progress") return { bg: "rgba(124,58,237,0.15)", color: C.purpleLight, border: "rgba(124,58,237,0.4)" };
-    return { bg: "rgba(16,185,129,0.15)", color: C.green, border: "rgba(16,185,129,0.4)" };
+    if (order.status === "pending") return { bg: "rgba(109,40,255,0.15)", color: "#6D28FF", border: "rgba(109,40,255,0.4)" };
+    if (order.status === "in-progress") return { bg: "rgba(255,194,71,0.15)", color: "#FFC247", border: "rgba(255,194,71,0.4)" };
+    return { bg: "rgba(18,215,242,0.15)", color: "#12D7F2", border: "rgba(18,215,242,0.4)" };
   };
   const statusStyle = getStatusColor();
 
   const getCardGlow = () => {
     if (isUrgent) return { borderColor: C.red, boxShadow: `0 0 30px rgba(239,68,68,0.3), inset 0 0 20px rgba(239,68,68,0.05)` };
-    if (isWarning) return { borderColor: C.warning, boxShadow: `0 0 25px rgba(245,158,11,0.2)` };
-    return { borderColor: statusStyle.border, boxShadow: `0 0 15px rgba(124,58,237,0.1)` };
+    if (isWarning) return { borderColor: C.warning, boxShadow: `0 0 25px rgba(255,194,71,0.2)` };
+    return { borderColor: statusStyle.border, boxShadow: `0 0 15px rgba(109,40,255,0.1)` };
   };
 
   return (
@@ -128,17 +130,16 @@ function OrderCard({ order, onUpdateStatus }: {
       transition={{ type: "spring", stiffness: 300, damping: 22 }}
       className="relative overflow-hidden"
       style={{
-        background: "var(--glass)",
-        backdropFilter: "blur(20px)",
-        border: "1px solid var(--border)",
-        borderRadius: "1.25rem",
+        background: C.surfaceHighest,
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: "20px",
         padding: "1.25rem",
         ...getCardGlow(),
       }}
     >
       {isUrgent && (
         <motion.div
-          className="absolute inset-0 pointer-events-none rounded-[1.25rem]"
+          className="absolute inset-0 pointer-events-none rounded-[20px]"
           animate={{ opacity: [0.05, 0.12, 0.05] }}
           transition={{ duration: 1.5, repeat: Infinity }}
           style={{ background: `radial-gradient(circle at 50% 50%, rgba(239,68,68,0.15) 0%, transparent 70%)` }}
@@ -150,17 +151,18 @@ function OrderCard({ order, onUpdateStatus }: {
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="font-black text-5xl leading-none text-white"
+            className="font-black text-5xl leading-none font-display"
+            style={{ color: "#FF6A1F" }}
           >
             #{order.orderNumber}
           </motion.p>
-          <p className="text-sm mt-1.5" style={{ color: C.muted }}>
+          <p className="text-sm mt-1.5 font-body" style={{ color: C.muted }}>
             {formatTime(order.updatedAt)}
           </p>
         </div>
 
         <span
-          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider font-body"
           style={{
             background: statusStyle.bg,
             color: statusStyle.color,
@@ -172,7 +174,7 @@ function OrderCard({ order, onUpdateStatus }: {
               animate={{ opacity: [1, 0.4, 1] }}
               transition={{ duration: 1.2, repeat: Infinity }}
               className="w-1.5 h-1.5 rounded-full"
-              style={{ background: C.yellow }}
+              style={{ background: "#6D28FF" }}
             />
           )}
           {order.status === "pending" ? "New" : order.status === "in-progress" ? "In Progress" : "Done"}
@@ -185,12 +187,12 @@ function OrderCard({ order, onUpdateStatus }: {
           animate={{ opacity: 1, height: "auto" }}
           className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg"
           style={{
-            background: isUrgent ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.15)",
-            border: `1px solid ${isUrgent ? "rgba(239,68,68,0.4)" : "rgba(245,158,11,0.4)"}`,
+            background: isUrgent ? "rgba(239,68,68,0.15)" : "rgba(255,194,71,0.15)",
+            border: `1px solid ${isUrgent ? "rgba(239,68,68,0.4)" : "rgba(255,194,71,0.4)"}`,
           }}
         >
           <AlertTriangle className="w-4 h-4" style={{ color: isUrgent ? C.red : C.warning }} />
-          <span className="text-sm font-bold" style={{ color: isUrgent ? C.red : C.warning }}>
+          <span className="text-sm font-bold font-body" style={{ color: isUrgent ? C.red : C.warning }}>
             {isUrgent ? "URGENT!" : "AGING!"} {ageMin} min
           </span>
         </motion.div>
@@ -198,31 +200,31 @@ function OrderCard({ order, onUpdateStatus }: {
 
       <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
         {order.items.map((item, idx) => (
-          <div key={idx} className="flex justify-between items-start py-1.5" style={{ borderBottom: "1px solid var(--border)" }}>
+          <div key={idx} className="flex justify-between items-start py-1.5 font-body" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
             <div className="flex items-center gap-2">
               <span
-                className="text-xs font-bold w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(124,58,237,0.25)", color: C.purpleLight }}
+                className="text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(109,40,255,0.2)", color: "#CEBDFF" }}
               >
                 {item.quantity}
               </span>
-              <span className="font-semibold text-sm text-white">{item.name}</span>
+              <span className="font-semibold text-sm" style={{ color: "#CBC3DA" }}>{item.name}</span>
             </div>
-            <span className="text-sm" style={{ color: C.muted }}>${(item.price * item.quantity).toFixed(2)}</span>
+            <span className="text-sm font-display" style={{ color: "#948DA3" }}>${(item.price * item.quantity).toFixed(2)}</span>
           </div>
         ))}
       </div>
 
       {order.specialInstructions && (
-        <div className="mb-4 p-2.5 rounded-lg" style={{ background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.4)" }}>
-          <p className="text-xs font-bold uppercase tracking-wider mb-0.5" style={{ color: C.warning }}>Special Instructions</p>
-          <p className="text-sm text-white">{order.specialInstructions}</p>
+        <div className="mb-4 p-2.5 rounded-lg" style={{ background: "rgba(255,194,71,0.12)", border: "1px solid rgba(255,194,71,0.3)" }}>
+          <p className="text-xs font-bold uppercase tracking-wider mb-0.5 font-body" style={{ color: "#FFC247" }}>Special Instructions</p>
+          <p className="text-sm font-body" style={{ color: "#CBC3DA" }}>{order.specialInstructions}</p>
         </div>
       )}
 
-      <div className="flex justify-between items-center pt-3 mb-4" style={{ borderTop: "2px solid var(--border)" }}>
-        <span className="text-sm font-medium" style={{ color: C.muted }}>Total</span>
-        <span className="text-xl font-black gradient-text-fire">${grandTotal.toFixed(2)}</span>
+      <div className="flex justify-between items-center pt-3 mb-4 font-body" style={{ borderTop: "2px solid rgba(255,255,255,0.08)" }}>
+        <span className="text-sm font-medium" style={{ color: "#948DA3" }}>Total</span>
+        <span className="text-xl font-black font-display gradient-text-fire">${grandTotal.toFixed(2)}</span>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -232,10 +234,10 @@ function OrderCard({ order, onUpdateStatus }: {
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => onUpdateStatus(order.id, "in-progress")}
-              className="py-2.5 rounded-xl font-bold text-sm uppercase tracking-wider text-white transition-colors"
+              className="py-3 rounded-full font-bold text-sm uppercase tracking-wider text-white transition-colors"
               style={{
-                background: "linear-gradient(135deg, var(--purple), var(--purple-light))",
-                boxShadow: "0 4px 14px rgba(124,58,237,0.3)",
+                background: "#6D28FF",
+                boxShadow: "0 4px 14px rgba(109,40,255,0.35)",
               }}
             >
               Start
@@ -244,10 +246,10 @@ function OrderCard({ order, onUpdateStatus }: {
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => onUpdateStatus(order.id, "completed")}
-              className="py-2.5 rounded-xl font-bold text-sm uppercase tracking-wider text-white transition-colors"
+              className="py-3 rounded-full font-bold text-sm uppercase tracking-wider text-white transition-colors"
               style={{
-                background: "var(--green)",
-                boxShadow: "0 4px 14px rgba(16,185,129,0.3)",
+                background: "#12D7F2",
+                boxShadow: "0 4px 14px rgba(18,215,242,0.3)",
               }}
             >
               Done
@@ -259,14 +261,14 @@ function OrderCard({ order, onUpdateStatus }: {
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => onUpdateStatus(order.id, "completed")}
-            className="col-span-2 py-3 rounded-xl font-bold text-sm uppercase tracking-wider text-white flex items-center justify-center gap-2"
+            className="col-span-2 py-3 rounded-full font-bold text-sm uppercase tracking-wider text-white flex items-center justify-center gap-2"
             style={{
-              background: "var(--green)",
-              boxShadow: "0 4px 14px rgba(16,185,129,0.3)",
+              background: "#FF6A1F",
+              boxShadow: "0 4px 14px rgba(255,106,31,0.35)",
             }}
           >
             <CheckCircle className="w-4 h-4" />
-            Mark Complete
+            BUMP — Order Complete
           </motion.button>
         )}
       </div>
@@ -281,11 +283,11 @@ function SoundToggle({ enabled, onToggle }: { enabled: boolean; onToggle: () => 
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.92 }}
       onClick={onToggle}
-      className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
+      className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium font-body"
       style={{
-        background: enabled ? "rgba(124,58,237,0.2)" : "var(--void-elevated)",
-        border: `1px solid ${enabled ? "var(--purple)" : "var(--border)"}`,
-        color: enabled ? C.purpleLight : C.muted,
+        background: enabled ? "rgba(109,40,255,0.2)" : "#221D2F",
+        border: `1px solid ${enabled ? "#6D28FF" : "rgba(255,255,255,0.08)"}`,
+        color: enabled ? "#CEBDFF" : C.muted,
       }}
     >
       <motion.div animate={enabled ? { rotate: [0, 12, -8, 0] } : {}} transition={{ duration: 0.4 }}>
@@ -400,7 +402,7 @@ export default function KitchenPage() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--void)" }}>
+    <div className="min-h-screen" style={{ background: "#151022" }}>
       <AmbientBackground />
       <Nav />
 
@@ -416,17 +418,17 @@ export default function KitchenPage() {
               whileHover={{ scale: 1.05 }}
               className="w-16 h-16 rounded-2xl flex items-center justify-center"
               style={{
-                background: "linear-gradient(135deg, var(--yellow), var(--orange))",
-                boxShadow: "0 8px 24px rgba(255,107,53,0.3)",
+                background: "linear-gradient(135deg, #6D28FF, #CEBDFF)",
+                boxShadow: "0 8px 24px rgba(109,40,255,0.3)",
               }}
             >
-              <ChefHat className="w-9 h-9" style={{ color: "#0a0612" }} />
+              <ChefHat className="w-9 h-9" style={{ color: "white" }} />
             </motion.div>
             <div>
-              <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+              <h1 className="text-3xl sm:text-4xl font-black font-display tracking-tight" style={{ color: "#CBC3DA" }}>
                 Kitchen Display
               </h1>
-              <p className="text-sm font-bold uppercase tracking-[0.2em]" style={{ color: "var(--purple)" }}>
+              <p className="text-sm font-bold uppercase tracking-[0.2em] font-body" style={{ color: "#FF6A1F" }}>
                 Taco Bell AI Drive-Through
               </p>
             </div>
@@ -436,14 +438,14 @@ export default function KitchenPage() {
             <SoundToggle enabled={soundEnabled} onToggle={() => setSoundEnabled((p) => !p)} />
 
             <div className="ml-auto text-right">
-              <p className="text-xs font-bold uppercase tracking-wider mb-0.5" style={{ color: C.dim }}>
+              <p className="text-xs font-bold uppercase tracking-wider mb-0.5 font-body" style={{ color: C.dim }}>
                 Active Orders
               </p>
               <motion.p
                 key={pendingOrders.length}
-                initial={{ scale: 1.3, color: C.orange }}
-                animate={{ scale: 1, color: C.yellow }}
-                className="text-4xl font-black"
+                initial={{ scale: 1.3, color: "#FF6A1F" }}
+                animate={{ scale: 1, color: "#FFC247" }}
+                className="text-4xl font-black font-display"
               >
                 {isLoading ? "—" : pendingOrders.length}
               </motion.p>
@@ -455,12 +457,12 @@ export default function KitchenPage() {
         <section className="mb-12">
           <div className="flex items-center gap-2 mb-5">
             <Clock className="w-5 h-5" style={{ color: C.muted }} />
-            <h2 className="text-lg font-bold uppercase tracking-wider" style={{ color: C.muted }}>
+            <h2 className="text-lg font-bold uppercase tracking-wider font-body" style={{ color: C.muted }}>
               Pending & In Progress
             </h2>
             <span
               className="text-xs font-bold px-2 py-0.5 rounded-full"
-              style={{ background: "rgba(124,58,237,0.2)", color: C.purpleLight }}
+              style={{ background: "rgba(109,40,255,0.2)", color: "#CEBDFF" }}
             >
               {pendingOrders.length}
             </span>
@@ -472,7 +474,7 @@ export default function KitchenPage() {
                 <div
                   key={i}
                   className="h-52 rounded-2xl animate-pulse"
-                  style={{ background: "var(--glass)", border: "1px solid var(--border)" }}
+                  style={{ background: "#221D2F", border: "1px solid rgba(255,255,255,0.08)" }}
                 />
               ))}
             </div>
@@ -482,17 +484,17 @@ export default function KitchenPage() {
               animate={{ opacity: 1, y: 0 }}
               className="p-16 text-center"
               style={{
-                background: "var(--glass)",
+                background: "#221D2F",
                 backdropFilter: "blur(20px)",
-                border: "1px solid var(--border)",
-                borderRadius: "1.5rem",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "24px",
               }}
             >
-              <div className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ background: "rgba(124,58,237,0.15)" }}>
-                <CheckCircle className="w-10 h-10" style={{ color: "var(--purple)" }} />
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ background: "rgba(109,40,255,0.15)" }}>
+                <CheckCircle className="w-10 h-10" style={{ color: "#6D28FF" }} />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">All caught up!</h3>
-              <p className="text-sm" style={{ color: C.muted }}>
+              <h3 className="text-xl font-bold text-readable-body mb-2 font-display">All caught up!</h3>
+              <p className="text-sm font-body" style={{ color: C.muted }}>
                 No active orders right now. New orders will appear here automatically.
               </p>
             </motion.div>
@@ -526,12 +528,12 @@ export default function KitchenPage() {
           <section>
             <div className="flex items-center gap-2 mb-5">
               <CheckCircle className="w-5 h-5" style={{ color: C.dim }} />
-              <h2 className="text-lg font-bold uppercase tracking-wider" style={{ color: C.dim }}>
+              <h2 className="text-lg font-bold uppercase tracking-wider font-body" style={{ color: C.dim }}>
                 Completed
               </h2>
               <span
                 className="text-xs font-bold px-2 py-0.5 rounded-full"
-                style={{ background: "rgba(16,185,129,0.2)", color: C.green }}
+                style={{ background: "rgba(18,215,242,0.15)", color: "#12D7F2" }}
               >
                 {completedOrders.length}
               </span>
@@ -546,17 +548,16 @@ export default function KitchenPage() {
                   whileHover={{ opacity: 1, scale: 1.05 }}
                   className="flex-shrink-0 p-4 text-center min-w-[100px] cursor-pointer"
                   style={{
-                    background: "var(--glass)",
-                    backdropFilter: "blur(20px)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "1rem",
+                    background: "#221D2F",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    borderRadius: "16px",
                   }}
                   onClick={() => handleUpdateStatus(order.id, "pending")}
                   title="Click to restore"
                 >
-                  <p className="font-black text-2xl text-white">#{order.orderNumber}</p>
-                  <p className="text-xs mt-1" style={{ color: C.dim }}>{formatTime(order.updatedAt)}</p>
-                  <p className="text-[10px] mt-1 font-medium" style={{ color: C.green }}>Done</p>
+                  <p className="font-black text-2xl font-display" style={{ color: "#FFC247" }}>#{order.orderNumber}</p>
+                  <p className="text-xs mt-1 font-body" style={{ color: C.dim }}>{formatTime(order.updatedAt)}</p>
+                  <p className="text-[10px] mt-1 font-medium font-body" style={{ color: "#12D7F2" }}>Done</p>
                 </motion.div>
               ))}
             </div>
@@ -565,12 +566,12 @@ export default function KitchenPage() {
       </div>
 
       {/* Real-time indicator */}
-      <div className="fixed bottom-4 right-4 flex items-center gap-2 text-xs z-50" style={{ color: C.dim }}>
+      <div className="fixed bottom-4 right-4 flex items-center gap-2 text-xs z-50 font-body" style={{ color: "#948DA3" }}>
         <motion.span
           animate={{ opacity: [1, 0.3, 1] }}
           transition={{ duration: 2, repeat: Infinity }}
           className="w-2 h-2 rounded-full"
-          style={{ background: C.green }}
+          style={{ background: "#12D7F2" }}
         />
         Live via SSE
       </div>
