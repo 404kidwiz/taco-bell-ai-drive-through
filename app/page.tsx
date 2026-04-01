@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Phone, Car, ArrowRight } from "lucide-react";
+import { StatusBadge } from "./components/StatusBadge";
 
 const container = {
   hidden: { opacity: 0 },
@@ -33,6 +34,7 @@ export default function HomePage() {
             <p className="text-[10px] text-[#948DA3] font-medium uppercase tracking-[0.15em]">AI Restaurant Demos</p>
           </div>
         </div>
+        <StatusBadge />
       </motion.header>
 
       {/* Main Content */}
