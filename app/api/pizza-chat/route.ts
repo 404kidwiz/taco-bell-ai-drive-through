@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { PIZZA_MENU_ITEMS } from "../../data/pizza-menu";
+import { NextRequest } from "next/server";
+import { getCachedResponse, setCachedResponse, isCommonQuery } from "../../lib/response-cache";
 
 const SYSTEM_PROMPT = `You are "Luigi", a friendly and efficient phone agent for OrderFlow Pizza — an AI-powered pizza restaurant. You're answering a phone call from a customer who wants to place an order.
 
@@ -58,18 +58,48 @@ export async function POST(req: NextRequest) {
   try {
     const { messages } = (await req.json()) as { messages: Message[] };
 
+    // Check cache for the last user message
+    const lastUserMsg = messages.filter((m) => m.role === "user").pop();
+    if (lastUserMsg) {
+      const cached = getCachedResponse(lastUserMsg.content);
+      if (cached) {
+        // Return as a stream-like response for consistency
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(encoder.encode(cached));
+            controller.close();
+          },
+        });
+        return new Response(stream, {
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "X-Stream": "cached",
+          },
+        });
+      }
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      const fallback =
+        "Hey, thanks for calling OrderFlow Pizza! I'm Luigi, and I'm ready to take your order. What can I get for you tonight?";
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(fallback));
+          controller.close();
+        },
+      });
+      return new Response(stream, {
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
+    }
+
     const apiMessages: Message[] = [
       { role: "system", content: SYSTEM_PROMPT },
       ...messages,
     ];
-
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      // Fallback: return a canned response
-      return NextResponse.json({
-        message: "Hey, thanks for calling OrderFlow Pizza! I'm Luigi, and I'm ready to take your order. What can I get for you tonight?",
-      });
-    }
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -80,29 +110,96 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: apiMessages,
-        max_tokens: 300,
-        temperature: 0.8,
+        max_tokens: 200,
+        temperature: 0.7,
+        stream: true,
       }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
       console.error("OpenAI error:", errText);
-      return NextResponse.json(
-        { message: "Sorry about that — let me get someone on the line. Can you repeat your order?" },
-        { status: 200 }
-      );
+      const fallback =
+        "Sorry about that — let me get someone on the line. Can you repeat your order?";
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(fallback));
+          controller.close();
+        },
+      });
+      return new Response(stream, {
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
     }
 
-    const data = await response.json();
-    const aiMessage = data.choices?.[0]?.message?.content || "I'm here! What can I get you?";
+    // Stream the response, collecting full text for cache
+    let fullText = "";
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
 
-    return NextResponse.json({ message: aiMessage });
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = response.body!.getReader();
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split("\n");
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || trimmed === "data: [DONE]") continue;
+              if (!trimmed.startsWith("data: ")) continue;
+
+              try {
+                const json = JSON.parse(trimmed.slice(6));
+                const content = json.choices?.[0]?.delta?.content;
+                if (content) {
+                  fullText += content;
+                  controller.enqueue(encoder.encode(content));
+                }
+              } catch {
+                // Skip malformed chunks
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Stream read error:", err);
+        } finally {
+          // Cache the full response for common queries
+          if (lastUserMsg && fullText && isCommonQuery(lastUserMsg.content)) {
+            setCachedResponse(lastUserMsg.content, fullText);
+          }
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+        "X-Stream": "live",
+      },
+    });
   } catch (error) {
     console.error("Pizza chat error:", error);
-    return NextResponse.json(
-      { message: "Sorry, having some trouble with the line. Can you try again?" },
-      { status: 200 }
-    );
+    const fallback =
+      "Sorry, having some trouble with the line. Can you try again?";
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(fallback));
+        controller.close();
+      },
+    });
+    return new Response(stream, {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
   }
 }

@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { MenuItem } from "../types";
 import { MENU_ITEMS } from "../data/menu";
+import { fetchStream, fetchStreamSentences } from "../lib/stream";
 
 interface VoiceMessage {
   role: "user" | "assistant";
@@ -13,9 +14,10 @@ interface UseVoiceAIOptions {
   onMessage: (message: string) => void;
   onTranscript: (text: string) => void;
   onAddItem?: (item: MenuItem) => void;
+  onStreamingUpdate?: (partialText: string) => void;
 }
 
-export function useVoiceAI({ onMessage, onTranscript, onAddItem }: UseVoiceAIOptions) {
+export function useVoiceAI({ onMessage, onTranscript, onAddItem, onStreamingUpdate }: UseVoiceAIOptions) {
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastMessage, setLastMessage] = useState("");
@@ -54,18 +56,6 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem }: UseVoiceAIOpt
       }
     }
 
-    // Category matching
-    if (lowerInput.includes("taco") && !lowerInput.includes("locos") && !lowerInput.includes("doritos")) {
-      // Only if they said just "taco" generically, don't add all tacos
-    }
-    if (lowerInput.match(/\bburritos?\b/)) {
-      for (const mi of MENU_ITEMS) {
-        if (mi.category === "burritos" && !seen.has(mi.id)) {
-          // Only add specific matches, not entire category
-        }
-      }
-    }
-
     return matchedItems;
   }, []);
 
@@ -75,11 +65,9 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem }: UseVoiceAIOpt
     const seen = new Set<string>();
 
     for (const item of MENU_ITEMS) {
-      // Check if the AI response mentions this item (various forms)
       const patterns = [
         item.name.toLowerCase(),
         item.name.toLowerCase().replace(/\s+/g, ''),
-        // Handle partial matches like "crunchwrap" for "Crunchwrap Supreme"
         ...item.name.toLowerCase().split(/\s+/).filter(w => w.length > 3),
       ];
 
@@ -96,32 +84,57 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem }: UseVoiceAIOpt
     return matched;
   }, []);
 
-  // Send message to LLM and get response
+  // Speak text immediately (for sentence-level TTS)
+  const speakResponse = useCallback((text: string) => {
+    if (synthesisRef.current) {
+      setIsSpeaking(true);
+      synthesisRef.current.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.1;
+      utterance.pitch = 1;
+
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        // Restart listening immediately after speech ends
+        if (recognitionRef.current && isConnectedRef.current) {
+          try {
+            recognitionRef.current.start();
+          } catch {}
+        }
+      };
+
+      synthesisRef.current.speak(utterance);
+      setLastMessage(text);
+      onMessage(text);
+    }
+  }, [onMessage]);
+
+  const isConnectedRef = useRef(false);
+
+  // Send message to LLM with streaming — for text chat mode
   const chatWithLLM = useCallback(async (userMessage: string): Promise<string> => {
     conversationRef.current.push({ role: "user", content: userMessage });
 
     try {
-      const res = await fetch("/api/tacobell-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: conversationRef.current }),
-      });
+      const fullText = await fetchStream(
+        "/api/tacobell-chat",
+        { messages: conversationRef.current },
+        (streamed) => {
+          onStreamingUpdate?.(streamed);
+        },
+      );
 
-      const data = await res.json();
-      const aiMessage: string = data.message || "What else can I get for you?";
+      conversationRef.current.push({ role: "assistant", content: fullText });
 
-      conversationRef.current.push({ role: "assistant", content: aiMessage });
-
-      // Extract and auto-add items from AI response
       if (onAddItem) {
-        const confirmedItems = extractItemsFromResponse(aiMessage);
+        const confirmedItems = extractItemsFromResponse(fullText);
         confirmedItems.forEach(item => onAddItem(item));
       }
 
-      return aiMessage;
+      return fullText;
     } catch (err) {
       console.error("LLM chat error:", err);
-      // Fallback to keyword matching
       const matched = findMatchingItems(userMessage);
       if (matched.length > 0 && onAddItem) {
         matched.forEach(item => onAddItem(item));
@@ -129,7 +142,47 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem }: UseVoiceAIOpt
       }
       return "I didn't quite catch that. What can I get for you?";
     }
-  }, [onAddItem, findMatchingItems, extractItemsFromResponse]);
+  }, [onAddItem, findMatchingItems, extractItemsFromResponse, onStreamingUpdate]);
+
+  // Send message with streaming + sentence-level TTS for voice mode
+  const chatWithLLMVoice = useCallback(async (userMessage: string): Promise<string> => {
+    conversationRef.current.push({ role: "user", content: userMessage });
+
+    try {
+      // Pause recognition while processing
+      try { recognitionRef.current?.stop(); } catch {}
+
+      const sentences: string[] = [];
+      let fullText = "";
+
+      const result = await fetchStreamSentences(
+        "/api/tacobell-chat",
+        { messages: conversationRef.current },
+        (sentence) => {
+          sentences.push(sentence);
+          // Speak each sentence as it completes
+          speakResponse(sentence);
+        },
+        (partial) => {
+          fullText = partial;
+          onStreamingUpdate?.(partial);
+        },
+      );
+
+      fullText = result;
+      conversationRef.current.push({ role: "assistant", content: fullText });
+
+      if (onAddItem) {
+        const confirmedItems = extractItemsFromResponse(fullText);
+        confirmedItems.forEach(item => onAddItem(item));
+      }
+
+      return fullText;
+    } catch (err) {
+      console.error("Voice LLM error:", err);
+      return "I didn't quite catch that. What can I get for you?";
+    }
+  }, [onAddItem, extractItemsFromResponse, speakResponse, onStreamingUpdate]);
 
   // Sanitize user input
   const sanitizeInput = (raw: string): string => {
@@ -166,8 +219,9 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem }: UseVoiceAIOpt
             onTranscript(sanitized);
             isProcessingRef.current = true;
 
-            const response = await chatWithLLM(sanitized);
-            speakResponse(response);
+            const response = await chatWithLLMVoice(sanitized);
+            setLastMessage(response);
+            onMessage(response);
             isProcessingRef.current = false;
           }
         };
@@ -186,27 +240,7 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem }: UseVoiceAIOpt
       recognitionRef.current?.stop();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onTranscript, chatWithLLM]);
-
-  const speakResponse = (text: string) => {
-    if (synthesisRef.current) {
-      setIsSpeaking(true);
-      // Cancel any ongoing speech
-      synthesisRef.current.cancel();
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.1; // Slightly faster for drive-through energy
-      utterance.pitch = 1;
-
-      utterance.onend = () => {
-        setIsSpeaking(false);
-      };
-
-      synthesisRef.current.speak(utterance);
-      setLastMessage(text);
-      onMessage(text);
-    }
-  };
+  }, [onTranscript, chatWithLLMVoice]);
 
   const connect = useCallback(async () => {
     try {
@@ -221,15 +255,16 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem }: UseVoiceAIOpt
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
       if (recognitionRef.current) {
-        // Reset conversation
         conversationRef.current = [];
         recognitionRef.current.start();
         setIsConnected(true);
+        isConnectedRef.current = true;
 
+        // Small delay, then send greeting with streaming voice
         setTimeout(async () => {
-          const greeting = await chatWithLLM("Hi, I'm at the drive-through.");
-          speakResponse(greeting);
-        }, 500);
+          const greeting = await chatWithLLMVoice("Hi, I'm at the drive-through.");
+          setLastMessage(greeting);
+        }, 300);
       } else {
         setError("Speech recognition not supported. Try Chrome or Edge.");
       }
@@ -244,12 +279,12 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem }: UseVoiceAIOpt
     recognitionRef.current?.stop();
     synthesisRef.current?.cancel();
     setIsConnected(false);
-    setIsSpeaking(false);
+    isConnectedRef.current = false;
     conversationRef.current = [];
     isProcessingRef.current = false;
   }, []);
 
-  // Expose chatWithLLM for text-based chat mode
+  // Expose chatWithLLM for text-based chat mode (uses streaming)
   const sendChatMessage = useCallback(async (message: string): Promise<string> => {
     const sanitized = sanitizeInput(message);
     return chatWithLLM(sanitized);
@@ -257,7 +292,7 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem }: UseVoiceAIOpt
 
   const speakText = useCallback((text: string) => {
     speakResponse(text);
-  }, []);
+  }, [speakResponse]);
 
   return {
     isConnected,

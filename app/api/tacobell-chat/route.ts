@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { getCachedResponse, setCachedResponse, isCommonQuery } from "../../lib/response-cache";
 
 const SYSTEM_PROMPT = `You are the AI drive-through assistant at Taco Bell. You're fast, friendly, and efficient.
 
@@ -70,17 +71,47 @@ export async function POST(req: NextRequest) {
   try {
     const { messages } = (await req.json()) as { messages: Message[] };
 
+    // Check cache for the last user message
+    const lastUserMsg = messages.filter((m) => m.role === "user").pop();
+    if (lastUserMsg) {
+      const cached = getCachedResponse(lastUserMsg.content);
+      if (cached) {
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(encoder.encode(cached));
+            controller.close();
+          },
+        });
+        return new Response(stream, {
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "X-Stream": "cached",
+          },
+        });
+      }
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      const fallback =
+        "Welcome to Taco Bell! I'm your AI drive-through assistant. What can I get for you today?";
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(fallback));
+          controller.close();
+        },
+      });
+      return new Response(stream, {
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
+    }
+
     const apiMessages: Message[] = [
       { role: "system", content: SYSTEM_PROMPT },
       ...messages,
     ];
-
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({
-        message: "Welcome to Taco Bell! I'm your AI drive-through assistant. What can I get for you today?",
-      });
-    }
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -93,27 +124,92 @@ export async function POST(req: NextRequest) {
         messages: apiMessages,
         max_tokens: 150,
         temperature: 0.7,
+        stream: true,
       }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
       console.error("OpenAI error:", errText);
-      return NextResponse.json(
-        { message: "Sorry about that — let me get that fixed up. Can you repeat your order?" },
-        { status: 200 }
-      );
+      const fallback =
+        "Sorry about that — let me get that fixed up. Can you repeat your order?";
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(fallback));
+          controller.close();
+        },
+      });
+      return new Response(stream, {
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
     }
 
-    const data = await response.json();
-    const aiMessage = data.choices?.[0]?.message?.content || "What can I get for you today?";
+    let fullText = "";
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
 
-    return NextResponse.json({ message: aiMessage });
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = response.body!.getReader();
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split("\n");
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || trimmed === "data: [DONE]") continue;
+              if (!trimmed.startsWith("data: ")) continue;
+
+              try {
+                const json = JSON.parse(trimmed.slice(6));
+                const content = json.choices?.[0]?.delta?.content;
+                if (content) {
+                  fullText += content;
+                  controller.enqueue(encoder.encode(content));
+                }
+              } catch {
+                // Skip malformed chunks
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Stream read error:", err);
+        } finally {
+          if (lastUserMsg && fullText && isCommonQuery(lastUserMsg.content)) {
+            setCachedResponse(lastUserMsg.content, fullText);
+          }
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+        "X-Stream": "live",
+      },
+    });
   } catch (error) {
     console.error("Taco Bell chat error:", error);
-    return NextResponse.json(
-      { message: "Having some trouble — bear with me. What was that again?" },
-      { status: 200 }
-    );
+    const fallback =
+      "Having some trouble — bear with me. What was that again?";
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(fallback));
+        controller.close();
+      },
+    });
+    return new Response(stream, {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
   }
 }

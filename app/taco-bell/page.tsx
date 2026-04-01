@@ -510,6 +510,15 @@ export default function LandingPage() {
     onMessage: () => {},
     onTranscript: (text) => setTranscript(text),
     onAddItem: (item) => addItem({ ...item, quantity: 1 }),
+    onStreamingUpdate: (partial) => {
+      // Update the last assistant message with streaming text
+      setChatMessages((prev) => {
+        if (prev.length > 0 && prev[prev.length - 1].role === "assistant") {
+          return [...prev.slice(0, -1), { role: "assistant" as const, content: partial }];
+        }
+        return [...prev, { role: "assistant" as const, content: partial }];
+      });
+    },
   });
 
   const handleVoiceToggle = () => {
@@ -524,9 +533,18 @@ export default function LandingPage() {
     setChatMessages((prev) => [...prev, { role: "user", content: msg }]);
     setIsChatLoading(true);
 
+    // Show typing indicator for a natural pause
+    await new Promise((r) => setTimeout(r, 250));
+
     try {
       const response = await sendChatMessage(msg);
-      setChatMessages((prev) => [...prev, { role: "assistant", content: response }]);
+      setChatMessages((prev) => {
+        // Replace streaming placeholder with final text
+        if (prev.length > 0 && prev[prev.length - 1].role === "assistant") {
+          return [...prev.slice(0, -1), { role: "assistant", content: response }];
+        }
+        return [...prev, { role: "assistant", content: response }];
+      });
     } catch {
       setChatMessages((prev) => [...prev, { role: "assistant", content: "Sorry, having trouble there. Try again?" }]);
     }
@@ -536,9 +554,17 @@ export default function LandingPage() {
   const handleQuickPrompt = async (prompt: string) => {
     setChatMessages((prev) => [...prev, { role: "user", content: prompt }]);
     setIsChatLoading(true);
+
+    await new Promise((r) => setTimeout(r, 250));
+
     try {
       const response = await sendChatMessage(prompt);
-      setChatMessages((prev) => [...prev, { role: "assistant", content: response }]);
+      setChatMessages((prev) => {
+        if (prev.length > 0 && prev[prev.length - 1].role === "assistant") {
+          return [...prev.slice(0, -1), { role: "assistant", content: response }];
+        }
+        return [...prev, { role: "assistant", content: response }];
+      });
     } catch {
       setChatMessages((prev) => [...prev, { role: "assistant", content: "Sorry, having trouble there. Try again?" }]);
     }

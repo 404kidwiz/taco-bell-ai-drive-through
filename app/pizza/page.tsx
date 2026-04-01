@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Phone, PhoneCall, MessageCircle, Send, ArrowRight, Clock, CheckCircle, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { PIZZA_MENU_ITEMS } from "../data/pizza-menu";
+import { fetchStream } from "../lib/stream";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -134,15 +135,17 @@ export default function PizzaPage() {
     setIsTyping(true);
 
     try {
-      const res = await fetch("/api/pizza-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
-        }),
-      });
-      const data = await res.json();
-      setMessages([...newMessages, { role: "assistant", content: data.message }]);
+      // Show typing for 250ms for natural feel
+      await new Promise((r) => setTimeout(r, 250));
+
+      const fullText = await fetchStream(
+        "/api/pizza-chat",
+        { messages: newMessages.map((m) => ({ role: m.role, content: m.content })) },
+        (streamed) => {
+          setMessages([...newMessages, { role: "assistant", content: streamed }]);
+        },
+      );
+      setMessages([...newMessages, { role: "assistant", content: fullText }]);
     } catch {
       setMessages([
         ...newMessages,
