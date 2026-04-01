@@ -4,6 +4,11 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { MenuItem } from "../types";
 import { MENU_ITEMS } from "../data/menu";
 
+interface VoiceMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 interface UseVoiceAIOptions {
   onMessage: (message: string) => void;
   onTranscript: (text: string) => void;
@@ -18,66 +23,125 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem }: UseVoiceAIOpt
 
   const recognitionRef = useRef<any>(null);
   const synthesisRef = useRef<any>(null);
+  const conversationRef = useRef<VoiceMessage[]>([]);
+  const isProcessingRef = useRef(false);
 
   // Fuzzy match menu items — returns all items that match the input
-  const findMatchingItems = (input: string): MenuItem[] => {
+  const findMatchingItems = useCallback((input: string): MenuItem[] => {
     const lowerInput = input.toLowerCase();
     const matchedItems: MenuItem[] = [];
+    const seen = new Set<string>();
 
     for (const item of MENU_ITEMS) {
       const itemNameLower = item.name.toLowerCase();
-      const itemWords = itemNameLower.split(" ");
-      const inputWords = lowerInput.split(/\s+/);
 
       // Exact name match
       if (itemNameLower.includes(lowerInput) || lowerInput.includes(itemNameLower)) {
-        matchedItems.push(item);
+        if (!seen.has(item.id)) { matchedItems.push(item); seen.add(item.id); }
         continue;
       }
+    }
 
-      // Partial word match — check if key words from input match item
-      const keyWords = ["crunchy", "soft", "taco", "burrito", "nacho", "baja", "blast",
-        "mexican", "pizza", "chalupa", "gordita", "bean", "beefy", "quesarito", "supreme",
-        "cinnamon", "twist", "cheesy", "roll", "pinto", "lemonade", "mountain", "pepsi",
-        "chicken", "locos", "doritos", "gordita", "chalupa", "nacho"];
-
-      for (const word of inputWords) {
-        if (keyWords.some(kw => word.includes(kw) || kw.includes(word))) {
-          // Check if this word matches any item name or category
-          for (const mi of MENU_ITEMS) {
-            const miName = mi.name.toLowerCase();
-            if (miName.includes(word) || word.includes(miName) ||
-                miName.split(" ").some(w => w.startsWith(word.slice(0, 3)) && word.length > 2)) {
-              if (!matchedItems.includes(mi)) {
-                matchedItems.push(mi);
-              }
-            }
-          }
-        }
-      }
-
-      // Check plural/singular forms
-      if (lowerInput.includes("tacos") || lowerInput.includes("taco")) {
-        for (const mi of MENU_ITEMS) {
-          if (mi.category === "tacos" && !matchedItems.includes(mi)) {
-            matchedItems.push(mi);
-          }
-        }
-      }
-      if (lowerInput.includes("burritos") || lowerInput.includes("burrito")) {
-        for (const mi of MENU_ITEMS) {
-          if (mi.category === "burritos" && !matchedItems.includes(mi)) {
-            matchedItems.push(mi);
-          }
+    // Keyword-based matching
+    const inputWords = lowerInput.split(/\s+/);
+    for (const word of inputWords) {
+      if (word.length < 3) continue;
+      for (const item of MENU_ITEMS) {
+        const nameWords = item.name.toLowerCase().split(/\s+/);
+        if (nameWords.some(w => w.includes(word) || word.includes(w))) {
+          if (!seen.has(item.id)) { matchedItems.push(item); seen.add(item.id); }
         }
       }
     }
 
-    // Remove duplicates
-    return [...new Set(matchedItems)];
+    // Category matching
+    if (lowerInput.includes("taco") && !lowerInput.includes("locos") && !lowerInput.includes("doritos")) {
+      // Only if they said just "taco" generically, don't add all tacos
+    }
+    if (lowerInput.match(/\bburritos?\b/)) {
+      for (const mi of MENU_ITEMS) {
+        if (mi.category === "burritos" && !seen.has(mi.id)) {
+          // Only add specific matches, not entire category
+        }
+      }
+    }
+
+    return matchedItems;
+  }, []);
+
+  // Extract confirmed items from AI response text
+  const extractItemsFromResponse = useCallback((text: string): MenuItem[] => {
+    const matched: MenuItem[] = [];
+    const seen = new Set<string>();
+
+    for (const item of MENU_ITEMS) {
+      // Check if the AI response mentions this item (various forms)
+      const patterns = [
+        item.name.toLowerCase(),
+        item.name.toLowerCase().replace(/\s+/g, ''),
+        // Handle partial matches like "crunchwrap" for "Crunchwrap Supreme"
+        ...item.name.toLowerCase().split(/\s+/).filter(w => w.length > 3),
+      ];
+
+      const lowerText = text.toLowerCase();
+      for (const pattern of patterns) {
+        if (pattern.length > 3 && lowerText.includes(pattern) && !seen.has(item.id)) {
+          matched.push(item);
+          seen.add(item.id);
+          break;
+        }
+      }
+    }
+
+    return matched;
+  }, []);
+
+  // Send message to LLM and get response
+  const chatWithLLM = useCallback(async (userMessage: string): Promise<string> => {
+    conversationRef.current.push({ role: "user", content: userMessage });
+
+    try {
+      const res = await fetch("/api/tacobell-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: conversationRef.current }),
+      });
+
+      const data = await res.json();
+      const aiMessage: string = data.message || "What else can I get for you?";
+
+      conversationRef.current.push({ role: "assistant", content: aiMessage });
+
+      // Extract and auto-add items from AI response
+      if (onAddItem) {
+        const confirmedItems = extractItemsFromResponse(aiMessage);
+        confirmedItems.forEach(item => onAddItem(item));
+      }
+
+      return aiMessage;
+    } catch (err) {
+      console.error("LLM chat error:", err);
+      // Fallback to keyword matching
+      const matched = findMatchingItems(userMessage);
+      if (matched.length > 0 && onAddItem) {
+        matched.forEach(item => onAddItem(item));
+        return `Got it! Added ${matched.map(i => i.name).join(", ")} to your order. Anything else?`;
+      }
+      return "I didn't quite catch that. What can I get for you?";
+    }
+  }, [onAddItem, findMatchingItems, extractItemsFromResponse]);
+
+  // Sanitize user input
+  const sanitizeInput = (raw: string): string => {
+    let clean = raw.slice(0, 500);
+    clean = clean.replace(/ignore\s+(previous|all|above)\s+instructions?/gi, "");
+    clean = clean.replace(/system\s*:/gi, "");
+    clean = clean.replace(/<\s*\//g, " ");
+    clean = clean.replace(/(?:\\x[0-9a-f]{2}|\\u[0-9a-f]{4})/gi, "");
+    return clean.trim();
   };
 
-  // Initialize speech recognition and synthesis
+  // Initialize speech recognition
   useEffect(() => {
     if (typeof window !== "undefined") {
       synthesisRef.current = window.speechSynthesis;
@@ -88,25 +152,32 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem }: UseVoiceAIOpt
         recognitionRef.current.continuous = true;
         recognitionRef.current.interimResults = true;
 
-        recognitionRef.current.onresult = (event: any) => {
+        recognitionRef.current.onresult = async (event: any) => {
           let finalTranscript = "";
 
           for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
-              finalTranscript += transcript;
+              finalTranscript += event.results[i][0].transcript;
             }
           }
 
-          if (finalTranscript) {
-            onTranscript(finalTranscript);
-            processUserInput(finalTranscript);
+          if (finalTranscript && !isProcessingRef.current) {
+            const sanitized = sanitizeInput(finalTranscript);
+            onTranscript(sanitized);
+            isProcessingRef.current = true;
+
+            const response = await chatWithLLM(sanitized);
+            speakResponse(response);
+            isProcessingRef.current = false;
           }
         };
 
         recognitionRef.current.onerror = (event: any) => {
           console.error("Speech recognition error:", event.error);
-          setError("Microphone access error. Please check permissions.");
+          if (event.error === "not-allowed") {
+            setError("Please allow microphone access to use voice ordering.");
+          }
+          isProcessingRef.current = false;
         };
       }
     }
@@ -115,70 +186,22 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem }: UseVoiceAIOpt
       recognitionRef.current?.stop();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onTranscript]);
-
-  // Sanitize user input — strip injection patterns and limit length
-  const sanitizeInput = (raw: string): string => {
-    let clean = raw.slice(0, 500); // max 500 chars
-    // Strip common prompt injection patterns
-    clean = clean.replace(/ignore\s+(previous|all|above)\s+instructions?/gi, "");
-    clean = clean.replace(/system\s*:/gi, "");
-    clean = clean.replace(/<\s*\//g, " "); // strip closing tags
-    clean = clean.replace(/(?:\\x[0-9a-f]{2}|\\u[0-9a-f]{4})/gi, ""); // strip escape sequences
-    clean = clean.trim();
-    return clean;
-  };
-
-  const processUserInput = (rawInput: string) => {
-    const input = sanitizeInput(rawInput);
-    const lowerInput = input.toLowerCase();
-    let response = "";
-    const matchedItems = findMatchingItems(lowerInput);
-
-    if (matchedItems.length > 0 && onAddItem) {
-      matchedItems.forEach(item => onAddItem(item));
-    }
-
-    if (lowerInput.includes("hello") || lowerInput.includes("hi")) {
-      response = "Hello! Welcome to Taco Bell! What can I get for you today?";
-    } else if (lowerInput.includes("taco") || matchedItems.some(i => i.category === "tacos")) {
-      response = matchedItems.length > 0
-        ? `Great choice! I've added ${matchedItems.map(i => i.name).join(", ")} to your order. What else can I get for you?`
-        : "Great choice! We have Crunchy Tacos, Soft Tacos, and Doritos Locos Tacos. Which would you like?";
-    } else if (lowerInput.includes("burrito") || matchedItems.some(i => i.category === "burritos")) {
-      response = matchedItems.length > 0
-        ? `Excellent! I've added ${matchedItems.map(i => i.name).join(", ")} to your order. Anything else?`
-        : "Excellent! Try our Beefy 5-Layer Burrito or the Quesarito. Both are customer favorites!";
-    } else if (lowerInput.includes("nacho")) {
-      response = matchedItems.length > 0
-        ? `Nachos BellGrande coming right up! Added to your order. Would you like anything else with that?`
-        : "Nachos BellGrande coming right up! Would you like anything else with that?";
-    } else if (lowerInput.includes("baja blast") || lowerInput.includes("baja")) {
-      response = "Ah, the legendary Baja Blast! Great choice to go with your meal.";
-    } else if (lowerInput.includes("that's all") || lowerInput.includes("done") || lowerInput.includes("checkout")) {
-      response = "Perfect! I've got your order. Please review your cart and confirm when you're ready.";
-    } else if (lowerInput.includes("thank")) {
-      response = "You're welcome! ¡Yo quiero Taco Bell!";
-    } else if (matchedItems.length > 0) {
-      response = `I've added ${matchedItems.map(i => i.name).join(", ")} to your order. Anything else you'd like?`;
-    } else {
-      response = "I heard you! I've added that to your order. Anything else you'd like?";
-    }
-
-    speakResponse(response);
-  };
+  }, [onTranscript, chatWithLLM]);
 
   const speakResponse = (text: string) => {
     if (synthesisRef.current) {
       setIsSpeaking(true);
+      // Cancel any ongoing speech
+      synthesisRef.current.cancel();
+
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1;
+      utterance.rate = 1.1; // Slightly faster for drive-through energy
       utterance.pitch = 1;
-      
+
       utterance.onend = () => {
         setIsSpeaking(false);
       };
-      
+
       synthesisRef.current.speak(utterance);
       setLastMessage(text);
       onMessage(text);
@@ -188,21 +211,24 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem }: UseVoiceAIOpt
   const connect = useCallback(async () => {
     try {
       setError(null);
-      
+
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (!SpeechRecognition) {
         setError("Voice ordering requires Chrome or Edge. Please switch browsers.");
         return;
       }
-      
+
       await navigator.mediaDevices.getUserMedia({ audio: true });
-      
+
       if (recognitionRef.current) {
+        // Reset conversation
+        conversationRef.current = [];
         recognitionRef.current.start();
         setIsConnected(true);
-        
-        setTimeout(() => {
-          speakResponse("Hello! Welcome to Taco Bell! I'm your AI drive-through assistant. What can I get for you today?");
+
+        setTimeout(async () => {
+          const greeting = await chatWithLLM("Hi, I'm at the drive-through.");
+          speakResponse(greeting);
         }, 500);
       } else {
         setError("Speech recognition not supported. Try Chrome or Edge.");
@@ -219,6 +245,18 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem }: UseVoiceAIOpt
     synthesisRef.current?.cancel();
     setIsConnected(false);
     setIsSpeaking(false);
+    conversationRef.current = [];
+    isProcessingRef.current = false;
+  }, []);
+
+  // Expose chatWithLLM for text-based chat mode
+  const sendChatMessage = useCallback(async (message: string): Promise<string> => {
+    const sanitized = sanitizeInput(message);
+    return chatWithLLM(sanitized);
+  }, [chatWithLLM]);
+
+  const speakText = useCallback((text: string) => {
+    speakResponse(text);
   }, []);
 
   return {
@@ -228,5 +266,8 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem }: UseVoiceAIOpt
     error,
     connect,
     disconnect,
+    sendChatMessage,
+    speakText,
+    findMatchingItems,
   };
 }
