@@ -226,7 +226,7 @@ function LineChart({
   format,
 }: {
   data: { date: string; [key: string]: any }[];
-  accessor: (d: DailyStat) => number;
+  accessor: (d: { date: string; [key: string]: any }) => number;
   color: string;
   height?: number;
   format: (v: number) => string;
