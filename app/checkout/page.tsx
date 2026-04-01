@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Nav from "@/components/Nav";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCartStore } from "../hooks/useCartStore";
+import { useOrderTracking } from "../hooks/useOrderTracking";
+import { useRewards } from "../hooks/useRewards";
 
 // ── Progress Tracker ──────────────────────────────────────────────────────────
 function ProgressTracker({ step }: { step: 1 | 2 | 3 }) {
@@ -86,7 +89,7 @@ function AIVoiceCard({ message }: { message: string }) {
         ))}
       </div>
       <div className="p-3 bg-surface-container-lowest rounded-lg border-l-4 border-baja-cyan">
-        <p className="text-[#CBC3DA] text-sm italic font-label">"{message}"</p>
+        <p className="text-[#CBC3DA] text-sm italic font-label">&ldquo;{message}&rdquo;</p>
       </div>
     </div>
   );
@@ -119,11 +122,58 @@ function RewardsSummary({ earned }: { earned: number }) {
 function MobileCheckout() {
   const [step, setStep] = useState<1 | 2 | 3>(2);
   const [specialInstructions, setSpecialInstructions] = useState("");
-  const { items: cart } = useCartStore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { items: cart, clearCart } = useCartStore();
+  const router = useRouter();
+  const hasAttemptedSubmit = useRef(false);
+
+  useEffect(() => {
+    if (cart.length === 0 && !hasAttemptedSubmit.current) router.replace("/menu");
+  }, [cart.length, router]);
   const cartTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
   const tax = cartTotal * 0.085;
   const total = cartTotal + tax;
   const earnedPoints = Math.floor(total * 10);
+  const { createOrder } = useOrderTracking();
+  const { addPoints } = useRewards();
+
+  const handleSubmit = async () => {
+    if (cart.length === 0) {
+      setError("Your cart is empty");
+      hasAttemptedSubmit.current = true;
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      // Create order
+      const order = await createOrder({
+        items: cart.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity
+        })),
+        total: total,
+        specialInstructions: specialInstructions,
+      });
+
+      // Add rewards points
+      addPoints(earnedPoints);
+
+      // Clear cart
+      clearCart();
+
+      // Redirect to order status page
+      router.push(`/order-status?order=${order.id}`);
+    } catch (err: any) {
+      setError(err.message || "Failed to create order");
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="md:hidden min-h-screen bg-surface-dim pb-32">
@@ -226,15 +276,16 @@ function MobileCheckout() {
       <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-between gap-4 px-6 pb-10 bg-[#2C273A]/60 backdrop-blur-xl rounded-t-[2rem] pt-4 shadow-[0_-10px_30px_rgba(109,40,255,0.15)]">
         <Link href="/menu" className="flex flex-col items-center justify-center text-[#CBC3DA] bg-surface-bright rounded-full py-4 px-6 w-full hover:brightness-110 transition-all active:scale-98">
           <span className="material-symbols-outlined mb-1">edit</span>
-          <span className="font-manrope font-extrabold uppercase tracking-widest text-xs">Edit Order</span>
+          <span className="font-body font-extrabold uppercase tracking-widest text-xs">Edit Order</span>
         </Link>
-        <Link
-          href="/order-status"
-          className="flex flex-col items-center justify-center bg-gradient-to-br from-primary to-primary-container text-white rounded-full py-4 px-6 w-full shadow-[0_0_20px_rgba(109,40,255,0.5)] hover:brightness-110 transition-all active:scale-98"
+        <button
+          onClick={handleSubmit}
+          disabled={isSubmitting || cart.length === 0}
+          className={`flex flex-col items-center justify-center bg-gradient-to-br from-primary to-primary-container text-white rounded-full py-4 px-6 w-full shadow-[0_0_20px_rgba(109,40,255,0.5)] hover:brightness-110 transition-all active:scale-98 ${isSubmitting ? "opacity-50" : ""}`}
         >
+          {isSubmitting ? "Processing..." : "Confirm & Fire"}
           <span className="material-symbols-outlined mb-1" style={{ fontVariationSettings: "FILL 1" }}>local_fire_department</span>
-          <span className="font-manrope font-extrabold uppercase tracking-widest text-xs">Confirm & Fire</span>
-        </Link>
+        </button>
       </nav>
 
       {/* Floating Add More */}
@@ -251,16 +302,58 @@ function MobileCheckout() {
 // ── Desktop Checkout ────────────────────────────────────────────────────────────
 function DesktopCheckout() {
   const [specialInstructions, setSpecialInstructions] = useState("");
-  const { items: cart } = useCartStore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { items: cart, clearCart } = useCartStore();
+  const router = useRouter();
+  const hasAttemptedSubmit = useRef(false);
+
+  useEffect(() => {
+    if (cart.length === 0 && !hasAttemptedSubmit.current) router.replace("/menu");
+  }, [cart.length, router]);
   const cartTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
   const tax = cartTotal * 0.085;
   const total = cartTotal + tax;
   const earnedPoints = Math.floor(total * 10);
+  const { createOrder } = useOrderTracking();
+  const { addPoints } = useRewards();
 
-  const SAMPLE_ITEMS = [
-    { name: "CHEESY GORDITA CRUNCH", price: 4.89, options: ["+ Extra Cheese", "No Tomatoes"] },
-    { name: "Baja Blast Freeze", price: 2.99, options: ["Large", "Light Ice"] },
-  ];
+  const handleSubmit = async () => {
+    if (cart.length === 0) {
+      setError("Your cart is empty");
+      hasAttemptedSubmit.current = true;
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      // Create order
+      const order = await createOrder({
+        items: cart.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity
+        })),
+        total: total,
+        specialInstructions: specialInstructions,
+      });
+
+      // Add rewards points
+      addPoints(earnedPoints);
+
+      // Clear cart
+      clearCart();
+
+      // Redirect to order status page
+      router.push(`/order-status?order=${order.id}`);
+    } catch (err: any) {
+      setError(err.message || "Failed to create order");
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="hidden md:block min-h-screen bg-surface-dim">
@@ -280,9 +373,16 @@ function DesktopCheckout() {
                 <span className="text-[#CBC3DA] text-sm font-label uppercase tracking-widest">Ticket #4029</span>
               </div>
               <div className="p-8 space-y-10">
-                {SAMPLE_ITEMS.map((item, i) => (
-                  <OrderItemRow key={i} name={item.name} price={item.price} qty={1} options={item.options} />
-                ))}
+                {cart.length > 0 ? (
+                  cart.map((item) => (
+                    <OrderItemRow key={item.id} name={item.name} price={item.price} qty={item.quantity} options={[]} />
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <span className="material-symbols-outlined text-4xl text-[#494457]">shopping_cart</span>
+                    <p className="mt-2 text-sm text-[#494457] font-label">No items yet. <a href="/menu" className="text-primary underline">Browse the menu</a></p>
+                  </div>
+                )}
               </div>
 
               {/* Special Instructions */}
@@ -333,28 +433,29 @@ function DesktopCheckout() {
               <div className="space-y-4">
                 <div className="flex justify-between text-[#CBC3DA]">
                   <span className="text-sm font-label uppercase tracking-widest">Subtotal</span>
-                  <span className="font-bold font-label">${cartTotal > 0 ? cartTotal.toFixed(2) : "7.88"}</span>
+                  <span className="font-bold font-label">${cartTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-[#CBC3DA]">
                   <span className="text-sm font-label uppercase tracking-widest">Tax (8.5%)</span>
-                  <span className="font-bold font-label">${tax > 0 ? tax.toFixed(2) : "0.67"}</span>
+                  <span className="font-bold font-label">${tax.toFixed(2)}</span>
                 </div>
                 <div className="pt-4 border-t border-outline/30 flex justify-between items-end">
                   <span className="text-lg font-headline font-bold uppercase tracking-tight text-white">Total</span>
-                  <span className="text-4xl font-headline font-black text-tertiary tracking-tighter">${total > 0 ? total.toFixed(2) : "8.55"}</span>
+                  <span className="text-4xl font-headline font-black text-tertiary tracking-tighter">${total.toFixed(2)}</span>
                 </div>
               </div>
             </div>
 
             {/* Primary CTA */}
-            <Link
-              href="/order-status"
-              className="w-full py-6 rounded-full bg-gradient-to-br from-secondary-container to-secondary text-white font-headline text-2xl font-black uppercase tracking-widest shadow-[0_15px_40px_rgba(244,98,22,0.3)] hover:shadow-[0_20px_50px_rgba(244,98,22,0.5)] active:scale-[0.98] transition-all relative overflow-hidden group flex items-center justify-center gap-3"
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting || cart.length === 0}
+              className={`w-full py-6 rounded-full bg-gradient-to-br from-secondary-container to-secondary text-white font-headline text-2xl font-black uppercase tracking-widest shadow-[0_15px_40px_rgba(244,98,22,0.3)] hover:shadow-[0_20px_50px_rgba(244,98,22,0.5)] active:scale-[0.98] transition-all relative overflow-hidden group flex items-center justify-center gap-3 ${isSubmitting ? "opacity-50" : ""}`}
             >
-              Confirm & Fire
+              {isSubmitting ? "Processing..." : "Confirm & Fire"}
               <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "FILL 1" }}>local_fire_department</span>
               <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-            </Link>
+            </button>
 
             {/* Secondary Actions */}
             <div className="flex gap-4">

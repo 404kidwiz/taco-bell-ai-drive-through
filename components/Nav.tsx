@@ -33,6 +33,15 @@ export default function Nav() {
           </div>
         </div>
         <div className="flex items-center gap-4">
+          {/* Cart */}
+          <Link href="/checkout" className="relative scale-95 active:scale-90 transition-transform text-[#CBC3DA] hover:text-baja-cyan">
+            <span className="material-symbols-outlined">shopping_cart</span>
+            {cartCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-secondary-container text-white text-[9px] font-black flex items-center justify-center">
+                {cartCount > 9 ? "9+" : cartCount}
+              </span>
+            )}
+          </Link>
           {/* Account */}
           <button className="scale-95 active:scale-90 transition-transform text-[#CBC3DA] hover:text-baja-cyan">
             <span className="material-symbols-outlined">account_circle</span>

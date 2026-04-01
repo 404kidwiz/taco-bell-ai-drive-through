@@ -12,6 +12,7 @@ import {
   Star,
 } from "lucide-react";
 import Nav from "@/components/Nav";
+import { api } from "../lib/api";
 
 const C = {
   void: "#151022",
@@ -198,19 +199,14 @@ export default function AnalyticsPage() {
     async function fetchData() {
       setLoading(true);
       try {
-        const [analyticsRes, ordersRes] = await Promise.all([
-          fetch(`/api/analytics?days=${period}`),
-          fetch(`/api/orders/history?limit=50`),
+        const [analyticsData, ordersData] = await Promise.all([
+          api.get<any>(`/api/analytics?days=${period}`),
+          api.get<{ orders: any[] }>(`/api/orders/history?limit=50`),
         ]);
-        if (analyticsRes.ok) {
-          setAnalytics(await analyticsRes.json());
-        }
-        if (ordersRes.ok) {
-          const data = await ordersRes.json();
-          setRecentOrders(data.orders ?? []);
-        }
+        setAnalytics(analyticsData);
+        setRecentOrders(ordersData.orders ?? []);
       } catch {
-        // network error
+        // network error — api wrapper handles retry
       } finally {
         setLoading(false);
       }

@@ -1,94 +1,104 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { api, API_BASE } from "../lib/api";
 
-// ── Mock Order Data ─────────────────────────────────────────────────────────────
-const MOCK_ORDERS = {
-  new: [
-    {
-      id: "1",
-      orderNumber: "DRV-7742",
-      type: "DRIVE-THRU LANE 1",
-      timer: "06:12",
-      urgent: true,
-      items: [
-        { qty: 2, name: "CRUNCHY TACO SUPREME" },
-        { qty: 1, name: "BAJA BLAST", note: "NO ICE" },
-        { qty: 3, name: "FIRE SAUCE" },
-      ],
-    },
-    {
-      id: "2",
-      orderNumber: "MOB-1102",
-      type: "MOBILE PICKUP",
-      timer: "01:45",
-      urgent: false,
-      items: [
-        { qty: 1, name: "CHEESY GORDITA CRUNCH" },
-        { qty: 1, name: "MEXICAN PIZZA" },
-      ],
-    },
-    {
-      id: "3",
-      orderNumber: "DRV-7745",
-      type: "DRIVE-THRU LANE 2",
-      timer: "00:30",
-      urgent: false,
-      items: [
-        { qty: 4, name: "SOFT TACO" },
-        { qty: 1, name: "NACHO FRIES" },
-      ],
-    },
-  ],
-  kitchen: [
-    {
-      id: "4",
-      orderNumber: "DRV-7738",
-      type: "DRIVE-THRU LANE 1",
-      timer: "04:22",
-      urgent: false,
-      items: [
-        { qty: 3, name: "BEEFY 5-LAYER BURRITO" },
-        { qty: 2, name: "CHALUPA SUPREME" },
-        { qty: 1, name: "LARGE PEPSI" },
-      ],
-    },
-    {
-      id: "5",
-      orderNumber: "MOB-1098",
-      type: "MOBILE PICKUP",
-      timer: "02:10",
-      urgent: false,
-      items: [
-        { qty: 1, name: "QUESADILLA - CHICKEN" },
-        { qty: 1, name: "SUB STEAK", note: "ALL" },
-      ],
-    },
-  ],
-  bagging: [
-    {
-      id: "6",
-      orderNumber: "DRV-7740",
-      type: "DRIVE-THRU LANE 1",
-      timer: "03:15",
-      urgent: false,
-      items: [
-        { qty: 3, name: "TACO SUPREME", note: "BOXES" },
-        { qty: 2, name: "LARGE CUPS" },
-      ],
-    },
-  ],
-  ready: [
-    { id: "7", orderNumber: "DRV-7735", type: "DRIVE-THRU LANE 1", timeAgo: "2m" },
-    { id: "8", orderNumber: "MOB-1085", type: "PICKUP SHELF A", timeAgo: "5m" },
-    { id: "9", orderNumber: "WEB-8995", type: "COUNTER", timeAgo: "8m" },
-  ],
-};
+// ── Order Types ───────────────────────────────────────────────────────────────
+export interface OrderItem {
+  id: string;
+  name: string;
+  price: number;
+  qty: number;
+  note?: string;
+}
+
+export interface Order {
+  id: string;
+  orderNumber: number;
+  type: string;
+  items: OrderItem[];
+  urgent?: boolean;
+  timer?: string;
+  timeAgo?: string;
+  updatedAt?: number;
+  status: "pending" | "in-progress" | "completed";
+}
+
+// Helper function to map API Order to KDS Order format
+function mapApiOrderToKdsOrder(apiOrder: any): Order {
+  // Parse items if they're a string (JSON)
+  const items = typeof apiOrder.items === 'string' 
+    ? JSON.parse(apiOrder.items) 
+    : apiOrder.items;
+  
+  // Map status to KDS buckets
+  const statusMap: Record<string, "pending" | "in-progress" | "completed"> = {
+    pending: "pending",
+    "in-progress": "in-progress",
+    completed: "completed"
+  };
+  
+  return {
+    id: apiOrder.id,
+    orderNumber: apiOrder.orderNumber,
+    type: apiOrder.type || "UNKNOWN",
+    items: items.map((item: any) => ({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      qty: item.quantity
+    })),
+    urgent: apiOrder.urgent || false,
+    timer: apiOrder.timer || "00:00",
+    timeAgo: apiOrder.timeAgo,
+    updatedAt: apiOrder.updatedAt,
+    status: statusMap[apiOrder.status] || "pending"
+  };
+}
+
+// Partition orders by status into KDS buckets
+function partitionOrders(orders: Order[]) {
+  const partitioned = {
+    new: [] as Order[],
+    kitchen: [] as Order[],
+    bagging: [] as Order[],
+    ready: [] as Order[]
+  };
+  
+  orders.forEach(order => {
+    switch (order.status) {
+      case "pending":
+        partitioned.new.push(order);
+        break;
+      case "in-progress":
+        partitioned.kitchen.push(order);
+        break;
+      case "completed":
+        // For completed orders, use updatedAt timestamp to determine placement:
+        // - Recently completed (< 2 minutes) → ready (just finished cooking)
+        // - Older completed → bagging (waiting for pickup)
+        const ageMs = Date.now() - (order.updatedAt || 0);
+        const ageMinutes = ageMs / (1000 * 60);
+        if (ageMinutes < 2) {
+          partitioned.ready.push(order);
+        } else {
+          partitioned.bagging.push(order);
+        }
+        break;
+    }
+  });
+  
+  return partitioned;
+}
 
 // ── Order Card Types ─────────────────────────────────────────────────────────────
-function NewOrderCard({ order, onBump }: { order: typeof MOCK_ORDERS.new[0]; onBump: () => void }) {
+function NewOrderCard({ order, onBump }: { order: Order; onBump: () => void }) {
   return (
     <div
+      role="region"
+      aria-label={`Order ${order.orderNumber}, ${order.items.length} items, status: pending`}
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onBump(); } }}
       className={`rounded-xl p-4 border-l-4 shadow-xl transition-all hover:scale-[1.01] ${
         order.urgent
           ? "bg-surface-container-high border-error animate-pulse shadow-[0_0_20px_rgba(255,106,31,0.15)]"
@@ -104,6 +114,7 @@ function NewOrderCard({ order, onBump }: { order: typeof MOCK_ORDERS.new[0]; onB
           className={`px-2 py-1 rounded font-mono text-xs font-bold ${
             order.urgent ? "bg-error text-white animate-pulse" : "bg-tertiary text-[#412d00]"
           }`}
+          aria-label={`Timer: ${order.timer}`}
         >
           {order.timer}
         </span>
@@ -132,15 +143,21 @@ function NewOrderCard({ order, onBump }: { order: typeof MOCK_ORDERS.new[0]; onB
   );
 }
 
-function KitchenOrderCard({ order, onBump }: { order: typeof MOCK_ORDERS.kitchen[0]; onBump: () => void }) {
+function KitchenOrderCard({ order, onBump }: { order: Order; onBump: () => void }) {
   return (
-    <div className="bg-surface-container-high rounded-xl p-4 border-l-4 border-secondary-container shadow-xl">
+    <div
+      role="region"
+      aria-label={`Order ${order.orderNumber}, ${order.items.length} items, status: in-progress`}
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onBump(); } }}
+      className="bg-surface-container-high rounded-xl p-4 border-l-4 border-secondary-container shadow-xl"
+    >
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="font-headline font-black text-2xl tracking-tighter text-white">{order.orderNumber}</h3>
           <p className="text-[10px] font-bold text-[#CBC3DA] uppercase tracking-widest">{order.type}</p>
         </div>
-        <span className="bg-secondary-container text-white px-2 py-1 rounded font-mono text-xs font-bold">{order.timer}</span>
+        <span className="bg-secondary-container text-white px-2 py-1 rounded font-mono text-xs font-bold" aria-label={`Timer: ${order.timer}`}>{order.timer}</span>
       </div>
       <ul className="space-y-1.5 mb-6">
         {order.items.map((item, i) => (
@@ -162,15 +179,21 @@ function KitchenOrderCard({ order, onBump }: { order: typeof MOCK_ORDERS.kitchen
   );
 }
 
-function BaggingOrderCard({ order, onBump }: { order: typeof MOCK_ORDERS.bagging[0]; onBump: () => void }) {
+function BaggingOrderCard({ order, onBump }: { order: Order; onBump: () => void }) {
   return (
-    <div className="bg-surface-container-high rounded-xl p-4 border-l-4 border-[#12D7F2] shadow-xl">
+    <div
+      role="region"
+      aria-label={`Order ${order.orderNumber}, ${order.items.length} items, status: bagging`}
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onBump(); } }}
+      className="bg-surface-container-high rounded-xl p-4 border-l-4 border-[#12D7F2] shadow-xl"
+    >
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="font-headline font-black text-2xl tracking-tighter text-white">{order.orderNumber}</h3>
           <p className="text-[10px] font-bold text-[#CBC3DA] uppercase tracking-widest">{order.type}</p>
         </div>
-        <span className="bg-[#12D7F2] text-[#151022] px-2 py-1 rounded font-mono text-xs font-bold">{order.timer}</span>
+        <span className="bg-[#12D7F2] text-[#151022] px-2 py-1 rounded font-mono text-xs font-bold" aria-label={`Timer: ${order.timer}`}>{order.timer}</span>
       </div>
       <div className="flex flex-wrap gap-2 mb-6">
         {order.items.map((item, i) => (
@@ -192,9 +215,14 @@ function BaggingOrderCard({ order, onBump }: { order: typeof MOCK_ORDERS.bagging
   );
 }
 
-function ReadyCard({ order }: { order: typeof MOCK_ORDERS.ready[0] }) {
+function ReadyCard({ order }: { order: Order }) {
   return (
-    <div className="bg-surface-container-low opacity-60 grayscale-[0.5] rounded-xl p-4 border-l-4 border-primary">
+    <div
+      role="region"
+      aria-label={`Order ${order.orderNumber}, status: ready`}
+      tabIndex={0}
+      className="bg-surface-container-low opacity-60 grayscale-[0.5] rounded-xl p-4 border-l-4 border-primary"
+    >
       <div className="flex justify-between items-start mb-2">
         <h4 className="font-headline font-black text-lg tracking-tighter text-[#CBC3DA]">{order.orderNumber}</h4>
         <span className="text-primary text-[10px] font-bold">READY {order.timeAgo} AGO</span>
@@ -219,27 +247,142 @@ function ColumnHeader({ title, count, color, dot }: { title: string; count: numb
 
 // ── Desktop KDS (4 columns) ────────────────────────────────────────────────────
 function DesktopKDS() {
-  const [newOrders, setNewOrders] = useState(MOCK_ORDERS.new);
-  const [kitchenOrders, setKitchenOrders] = useState(MOCK_ORDERS.kitchen);
-  const [baggingOrders, setBaggingOrders] = useState(MOCK_ORDERS.bagging);
-  const [readyOrders] = useState(MOCK_ORDERS.ready);
+  const [newOrders, setNewOrders] = useState<Order[]>([]);
+  const [kitchenOrders, setKitchenOrders] = useState<Order[]>([]);
+  const [baggingOrders, setBaggingOrders] = useState<Order[]>([]);
+  const [readyOrders, setReadyOrders] = useState<Order[]>([]);
+  const esRef = useRef<EventSource | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const updateOrderInBuckets = useCallback((updatedOrder: Order) => {
+    // Remove order from all buckets first
+    setNewOrders(prev => prev.filter(order => order.id !== updatedOrder.id));
+    setKitchenOrders(prev => prev.filter(order => order.id !== updatedOrder.id));
+    setBaggingOrders(prev => prev.filter(order => order.id !== updatedOrder.id));
+    setReadyOrders(prev => prev.filter(order => order.id !== updatedOrder.id));
+    
+    // Add to appropriate bucket based on status
+    switch (updatedOrder.status) {
+      case "pending":
+        setNewOrders(prev => [...prev, updatedOrder]);
+        break;
+      case "in-progress":
+        setKitchenOrders(prev => [...prev, updatedOrder]);
+        break;
+      case "completed":
+        if (updatedOrder.timeAgo) {
+          setReadyOrders(prev => [...prev, updatedOrder]);
+        } else {
+          setBaggingOrders(prev => [...prev, updatedOrder]);
+        }
+        break;
+    }
+  }, []);
+
+  const fetchCurrentOrders = useCallback(async () => {
+    try {
+      const response = await api.get<{ orders: any[] }>("/api/orders");
+      const orders = (response.orders || []).map(mapApiOrderToKdsOrder);
+      const { new: newOrdersList, kitchen, bagging, ready } = partitionOrders(orders);
+      setNewOrders(newOrdersList);
+      setKitchenOrders(kitchen);
+      setBaggingOrders(bagging);
+      setReadyOrders(ready);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+    }
+  }, []);
+
+  const connectSSE = useCallback(() => {
+    esRef.current?.close();
+    const eventSource = new EventSource(`${API_BASE}/api/orders/stream`);
+    esRef.current = eventSource;
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "new" || data.type === "update") {
+          const order = mapApiOrderToKdsOrder(data.data);
+          updateOrderInBuckets(order);
+        }
+      } catch (error) {
+        console.error("Error parsing SSE event:", error);
+      }
+    };
+
+    eventSource.onerror = () => {
+      console.error("SSE connection error, reconnecting...");
+      eventSource.close();
+      if (reconnectTimerRef.current) return;
+      reconnectTimerRef.current = setTimeout(() => {
+        reconnectTimerRef.current = null;
+        fetchCurrentOrders();
+        connectSSE();
+      }, 3000);
+    };
+  }, [fetchCurrentOrders, updateOrderInBuckets]);
+
+  useEffect(() => {
+    fetchCurrentOrders();
+    connectSSE();
+    return () => {
+      esRef.current?.close();
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+    };
+  }, [fetchCurrentOrders, connectSSE]);
 
   const bumpToKitchen = (id: string) => {
     const order = newOrders.find((o) => o.id === id);
     if (!order) return;
-    setNewOrders((prev) => prev.filter((o) => o.id !== id));
-    setKitchenOrders((prev) => [...prev, order]);
+    
+    // Optimistically update UI
+    setNewOrders(prev => prev.filter((o) => o.id !== id));
+    setKitchenOrders(prev => [...prev, order]);
+    
+    // Update on server
+    api.patch(`/api/orders/${id}`, { status: "in-progress" }).catch(error => {
+      console.error("Failed to update order status:", error);
+      // Revert optimistic update on error
+      setNewOrders(prev => [...prev, order]);
+      setKitchenOrders(prev => prev.filter((o) => o.id !== id));
+    });
   };
 
   const bumpToBagging = (id: string) => {
     const order = kitchenOrders.find((o) => o.id === id);
     if (!order) return;
-    setKitchenOrders((prev) => prev.filter((o) => o.id !== id));
-    setBaggingOrders((prev) => [...prev, order]);
+    
+    // Optimistically update UI
+    setKitchenOrders(prev => prev.filter((o) => o.id !== id));
+    setBaggingOrders(prev => [...prev, order]);
+    
+    // Update on server
+    api.patch(`/api/orders/${id}`, { status: "completed" }).catch(error => {
+      console.error("Failed to update order status:", error);
+      // Revert optimistic update on error
+      setKitchenOrders(prev => [...prev, order]);
+      setBaggingOrders(prev => prev.filter((o) => o.id !== id));
+    });
   };
 
   const bumpToReady = (id: string) => {
-    setBaggingOrders((prev) => prev.filter((o) => o.id !== id));
+    const order = baggingOrders.find((o) => o.id === id);
+    if (!order) return;
+    
+    // Optimistically update UI
+    setBaggingOrders(prev => prev.filter((o) => o.id !== id));
+    setReadyOrders(prev => [...prev, order]);
+    
+    // Update on server
+    api.patch(`/api/orders/${id}`, { status: "completed", timeAgo: "0m" }).catch(error => {
+      console.error("Failed to update order status:", error);
+      // Revert optimistic update on error
+      setBaggingOrders(prev => [...prev, order]);
+      setReadyOrders(prev => prev.filter((o) => o.id !== id));
+    });
   };
 
   return (
@@ -378,38 +521,165 @@ function DesktopKDS() {
 
 // ── Tablet KDS (2x2 Grid) ──────────────────────────────────────────────────────
 function TabletKDS() {
-  const [orders, setOrders] = useState({
-    new: MOCK_ORDERS.new.slice(0, 2),
-    kitchen: MOCK_ORDERS.kitchen,
-    bagging: MOCK_ORDERS.bagging,
-    ready: MOCK_ORDERS.ready,
+  const [orders, setOrders] = useState<{
+    new: Order[];
+    kitchen: Order[];
+    bagging: Order[];
+    ready: Order[];
+  }>({
+    new: [],
+    kitchen: [],
+    bagging: [],
+    ready: [],
   });
+  const esRef = useRef<EventSource | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const updateOrderInBuckets = useCallback((updatedOrder: Order) => {
+    setOrders(prev => ({
+      ...prev,
+      new: prev.new.filter(order => order.id !== updatedOrder.id),
+      kitchen: prev.kitchen.filter(order => order.id !== updatedOrder.id),
+      bagging: prev.bagging.filter(order => order.id !== updatedOrder.id),
+      ready: prev.ready.filter(order => order.id !== updatedOrder.id)
+    }));
+    
+    switch (updatedOrder.status) {
+      case "pending":
+        setOrders(prev => ({ ...prev, new: [...prev.new, updatedOrder] }));
+        break;
+      case "in-progress":
+        setOrders(prev => ({ ...prev, kitchen: [...prev.kitchen, updatedOrder] }));
+        break;
+      case "completed":
+        if (updatedOrder.timeAgo) {
+          setOrders(prev => ({ ...prev, ready: [...prev.ready, updatedOrder] }));
+        } else {
+          setOrders(prev => ({ ...prev, bagging: [...prev.bagging, updatedOrder] }));
+        }
+        break;
+    }
+  }, []);
+
+  const fetchCurrentOrders = useCallback(async () => {
+    try {
+      const response = await api.get<{ orders: any[] }>("/api/orders");
+      const orders = (response.orders || []).map(mapApiOrderToKdsOrder);
+      const { new: newOrdersList, kitchen, bagging, ready } = partitionOrders(orders);
+      setOrders({ new: newOrdersList, kitchen, bagging, ready });
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+    }
+  }, []);
+
+  const connectSSE = useCallback(() => {
+    esRef.current?.close();
+    const eventSource = new EventSource(`${API_BASE}/api/orders/stream`);
+    esRef.current = eventSource;
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "new" || data.type === "update") {
+          const order = mapApiOrderToKdsOrder(data.data);
+          updateOrderInBuckets(order);
+        }
+      } catch (error) {
+        console.error("Error parsing SSE event:", error);
+      }
+    };
+
+    eventSource.onerror = () => {
+      console.error("SSE connection error, reconnecting...");
+      eventSource.close();
+      if (reconnectTimerRef.current) return;
+      reconnectTimerRef.current = setTimeout(() => {
+        reconnectTimerRef.current = null;
+        fetchCurrentOrders();
+        connectSSE();
+      }, 3000);
+    };
+  }, [fetchCurrentOrders, updateOrderInBuckets]);
+
+  useEffect(() => {
+    fetchCurrentOrders();
+    connectSSE();
+    return () => {
+      esRef.current?.close();
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+    };
+  }, [fetchCurrentOrders, connectSSE]);
 
   const bumpToKitchen = (id: string) => {
     const order = orders.new.find((o) => o.id === id);
     if (!order) return;
-    setOrders((prev) => ({
+    
+    // Optimistically update UI
+    setOrders(prev => ({
       ...prev,
       new: prev.new.filter((o) => o.id !== id),
-      kitchen: [...prev.kitchen, order],
+      kitchen: [...prev.kitchen, order]
     }));
+    
+    // Update on server
+    api.patch(`/api/orders/${id}`, { status: "in-progress" }).catch(error => {
+      console.error("Failed to update order status:", error);
+      // Revert optimistic update on error
+      setOrders(prev => ({
+        ...prev,
+        new: [...prev.new, order],
+        kitchen: prev.kitchen.filter((o) => o.id !== id)
+      }));
+    });
   };
 
   const bumpToBagging = (id: string) => {
     const order = orders.kitchen.find((o) => o.id === id);
     if (!order) return;
-    setOrders((prev) => ({
+    
+    // Optimistically update UI
+    setOrders(prev => ({
       ...prev,
       kitchen: prev.kitchen.filter((o) => o.id !== id),
-      bagging: [...prev.bagging, order],
+      bagging: [...prev.bagging, order]
     }));
+    
+    // Update on server
+    api.patch(`/api/orders/${id}`, { status: "completed" }).catch(error => {
+      console.error("Failed to update order status:", error);
+      // Revert optimistic update on error
+      setOrders(prev => ({
+        ...prev,
+        kitchen: [...prev.kitchen, order],
+        bagging: prev.bagging.filter((o) => o.id !== id)
+      }));
+    });
   };
 
   const bumpToReady = (id: string) => {
-    setOrders((prev) => ({
+    const order = orders.bagging.find((o) => o.id === id);
+    if (!order) return;
+    
+    // Optimistically update UI
+    setOrders(prev => ({
       ...prev,
       bagging: prev.bagging.filter((o) => o.id !== id),
+      ready: [...prev.ready, order]
     }));
+    
+    // Update on server
+    api.patch(`/api/orders/${id}`, { status: "completed", timeAgo: "0m" }).catch(error => {
+      console.error("Failed to update order status:", error);
+      // Revert optimistic update on error
+      setOrders(prev => ({
+        ...prev,
+        bagging: [...prev.bagging, order],
+        ready: prev.ready.filter((o) => o.id !== id)
+      }));
+    });
   };
 
   return (
@@ -546,7 +816,7 @@ function TabletKDS() {
         <div className="flex-1 h-1 bg-[#12D7F2]/20 rounded-full overflow-hidden">
           <div className="h-full bg-[#12D7F2] w-2/3 animate-pulse" />
         </div>
-        <span className="text-[10px] font-bold opacity-70 italic">"Monitoring grill..."</span>
+        <span className="text-[10px] font-bold opacity-70 italic">&ldquo;Monitoring grill...&rdquo;</span>
       </div>
     </div>
   );

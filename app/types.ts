@@ -3,7 +3,7 @@ export interface MenuItem {
   name: string;
   description: string;
   price: number;
-  category: "tacos" | "burritos" | "specialties" | "sides" | "drinks";
+  category: "tacos" | "burritos" | "specialties" | "sides" | "drinks" | "pizza" | "desserts";
   image?: string;
   popular?: boolean;
   calories?: number;
@@ -11,6 +11,7 @@ export interface MenuItem {
 
 export interface CartItem extends MenuItem {
   quantity: number;
+  options?: string[];
 }
 
 export type OrderState =

@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Nav from "@/components/Nav";
 import Link from "next/link";
 import { useCartStore } from "../hooks/useCartStore";
+import { useCustomization } from "../hooks/useCustomization";
+import { useToast } from "../providers";
 
 const CATEGORIES = [
   { id: "featured", label: "Featured", icon: "stars" },
@@ -90,7 +92,8 @@ function FeaturedBox() {
 }
 
 // ── Menu Item Card (Desktop) ──────────────────────────────────────────────────
-function MenuItemCard({ item, onAdd }: { item: { id: string; name: string; desc: string; price: number; badge?: string }; onAdd: () => void }) {
+function MenuItemCard({ item, onAdd, openCustomization, getCustomizations }: { item: { id: string; name: string; desc: string; price: number; badge?: string }; onAdd: () => void; openCustomization: (itemId: string, basePrice: number) => void; getCustomizations: (itemId: string) => any[] }) {
+  const { showToast } = useToast();
   return (
     <div className="bg-surface-container-high rounded-xl overflow-hidden border border-outline/10 hover:border-primary/30 transition-all duration-300 group">
       <div className="h-28 relative overflow-hidden bg-gradient-to-br from-surface-container to-surface-container-high">
@@ -105,7 +108,10 @@ function MenuItemCard({ item, onAdd }: { item: { id: string; name: string; desc:
         {/* Hover add overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-surface-container/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
           <button
-            onClick={onAdd}
+            onClick={() => {
+              onAdd();
+              showToast(`${item.name} added`);
+            }}
             className="w-full py-2 rounded-lg bg-secondary-container text-white text-xs font-bold font-headline uppercase tracking-widest"
           >
             Add to Order
@@ -117,12 +123,25 @@ function MenuItemCard({ item, onAdd }: { item: { id: string; name: string; desc:
         <p className="text-[11px] text-[#CBC3DA] leading-relaxed line-clamp-2 mb-3 font-label">{item.desc}</p>
         <div className="flex items-center justify-between">
           <span className="font-headline font-black text-tertiary text-lg">${item.price.toFixed(2)}</span>
-          <button
-            onClick={onAdd}
-            className="w-8 h-8 rounded-full flex items-center justify-center bg-surface-bright hover:bg-primary-container transition-colors"
-          >
-            <span className="material-symbols-outlined text-sm text-white">add</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {getCustomizations(item.id).length > 0 && (
+              <button
+                onClick={() => openCustomization(item.id, item.price)}
+                className="w-8 h-8 rounded-full flex items-center justify-center bg-surface-bright hover:bg-primary-container transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm text-white">settings</span>
+              </button>
+            )}
+            <button
+              onClick={() => {
+                onAdd();
+                showToast(`${item.name} added`);
+              }}
+              className="w-8 h-8 rounded-full flex items-center justify-center bg-surface-bright hover:bg-primary-container transition-colors"
+            >
+              <span className="material-symbols-outlined text-sm text-white">add</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -131,6 +150,7 @@ function MenuItemCard({ item, onAdd }: { item: { id: string; name: string; desc:
 
 // ── Add-On Chips ──────────────────────────────────────────────────────────────
 function AddOnChip({ name, price, onAdd }: { name: string; price: number; onAdd: () => void }) {
+  const { showToast } = useToast();
   return (
     <div className="flex-shrink-0 flex items-center gap-3 bg-surface-container rounded-full px-4 py-2.5 border border-outline/10">
       <div>
@@ -138,7 +158,10 @@ function AddOnChip({ name, price, onAdd }: { name: string; price: number; onAdd:
         <p className="text-[10px] text-[#948DA3]">${price.toFixed(2)}</p>
       </div>
       <button
-        onClick={onAdd}
+        onClick={() => {
+          onAdd();
+          showToast(`${name} added`);
+        }}
         className="w-6 h-6 rounded-full bg-secondary-container flex items-center justify-center flex-shrink-0 hover:opacity-80 transition-opacity"
       >
         <span className="material-symbols-outlined text-xs text-white">add</span>
@@ -148,17 +171,42 @@ function AddOnChip({ name, price, onAdd }: { name: string; price: number; onAdd:
 }
 
 // ── Cart Drawer (Desktop Side) ───────────────────────────────────────────────
-function CartDrawer({ cartTotal }: { cartTotal: number }) {
+function CartDrawer({ cartTotal, cartItems, onRemove }: {
+  cartTotal: number;
+  cartItems: Array<{ id: string; name: string; price: number; quantity: number }>;
+  onRemove: (id: string) => void;
+}) {
   return (
     <div className="bg-surface-container-low rounded-xl p-5 border border-outline/10">
       <div className="flex items-center justify-between mb-4">
         <span className="text-[10px] font-label font-black uppercase tracking-widest text-[#CBC3DA]">YOUR ORDER</span>
-        <span className="bg-primary-container/20 text-primary px-2 py-0.5 rounded-full text-[10px] font-bold">0 ITEMS</span>
+        <span className="bg-primary-container/20 text-primary px-2 py-0.5 rounded-full text-[10px] font-bold">
+          {cartItems.reduce((s, i) => s + i.quantity, 0)} ITEMS
+        </span>
       </div>
-      <div className="text-center py-8">
-        <span className="material-symbols-outlined text-4xl text-[#494457]">shopping_cart</span>
-        <p className="mt-2 text-xs text-[#494457] font-label">Your cart is empty</p>
-      </div>
+      {cartItems.length === 0 ? (
+        <div className="text-center py-8">
+          <span className="material-symbols-outlined text-4xl text-[#494457]">shopping_cart</span>
+          <p className="mt-2 text-xs text-[#494457] font-label">Your cart is empty</p>
+        </div>
+      ) : (
+        <div className="space-y-3 mb-4 max-h-64 overflow-y-auto custom-scrollbar">
+          {cartItems.map((item) => (
+            <div key={item.id} className="flex items-center justify-between bg-surface-container rounded-lg px-3 py-2.5">
+              <div className="flex-1 min-w-0">
+                <p className="font-label font-bold text-xs text-white truncate">{item.quantity}x {item.name}</p>
+                <p className="text-[10px] text-[#948DA3] font-label">${(item.price * item.quantity).toFixed(2)}</p>
+              </div>
+              <button
+                onClick={() => onRemove(item.id)}
+                className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-error-container/20 transition-colors ml-2 flex-shrink-0"
+              >
+                <span className="material-symbols-outlined text-xs text-[#948DA3]">close</span>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="border-t border-outline/10 pt-4 mt-4">
         <div className="flex justify-between items-center mb-4">
           <span className="text-xs font-label text-[#CBC3DA] uppercase tracking-widest">Total</span>
@@ -203,9 +251,20 @@ function MobileBottomBar() {
 // ── Desktop Menu Page ─────────────────────────────────────────────────────────
 function DesktopMenu() {
   const [activeCategory, setActiveCategory] = useState("featured");
-  const { items: cart, addItem } = useCartStore();
+  const { items: cart, addItem, removeItem } = useCartStore();
+  const { showToast } = useToast();
   const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
   const cartTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const { activeCustomization, getCustomizations, openCustomization, closeCustomization, toggleCustomization, getItemPrice, getItemCustomizations } = useCustomization();
+
+  const activeCustomizationItem = useMemo(() => {
+    if (!activeCustomization) return null;
+    for (const category in MENU_ITEMS_MAP) {
+      const item = MENU_ITEMS_MAP[category].find(i => i.id === activeCustomization);
+      if (item) return { item, category };
+    }
+    return null;
+  }, [activeCustomization]);
 
   const items = MENU_ITEMS_MAP[activeCategory] || [];
 
@@ -245,6 +304,8 @@ function DesktopMenu() {
               key={item.id}
               item={item}
               onAdd={() => addItem({ id: item.id, name: item.name, description: item.desc, price: item.price, quantity: 1, category: activeCategory as "tacos" | "burritos" | "specialties" | "sides" | "drinks" })}
+              openCustomization={openCustomization}
+              getCustomizations={getCustomizations}
             />
           ))}
         </div>
@@ -259,16 +320,16 @@ function DesktopMenu() {
                 key={ao.name}
                 name={ao.name}
                 price={ao.price}
-                onAdd={() => {}}
+                onAdd={() => addItem({ id: `addon-${ao.name.toLowerCase().replace(/\s+/g, "-")}`, name: ao.name, description: "", price: ao.price, quantity: 1, category: "sides" })}
               />
             ))}
           </div>
         </div>
       </div>
 
-      {/* Cart Sidebar */}
+       {/* Cart Sidebar */}
       <div className="w-80 xl:w-96 px-6 py-8 border-l border-outline/10">
-        <CartDrawer cartTotal={cartTotal} />
+        <CartDrawer cartTotal={cartTotal} cartItems={cart} onRemove={removeItem} />
 
         {/* Quick Stats */}
         <div className="mt-6 space-y-3">
@@ -288,6 +349,33 @@ function DesktopMenu() {
           </div>
         </div>
       </div>
+
+      {/* Customization Modal */}
+      {activeCustomizationItem && (
+        <CustomizationModal
+          itemId={activeCustomizationItem.item.id}
+          itemName={activeCustomizationItem.item.name}
+          basePrice={getItemPrice(activeCustomizationItem.item.id, activeCustomizationItem.item.price)}
+          onClose={closeCustomization}
+          onAddToOrder={() => {
+            addItem({
+              id: activeCustomizationItem.item.id,
+              name: activeCustomizationItem.item.name,
+              description: activeCustomizationItem.item.desc,
+              price: getItemPrice(activeCustomizationItem.item.id, activeCustomizationItem.item.price),
+              quantity: 1,
+              category: activeCustomizationItem.category as "tacos" | "burritos" | "specialties" | "sides" | "drinks",
+              options: getItemCustomizations(activeCustomizationItem.item.id).map(c => c.name)
+            });
+            closeCustomization();
+          }}
+          getCustomizations={getCustomizations}
+          getItemCustomizations={getItemCustomizations}
+          toggleCustomization={toggleCustomization}
+        />
+      )}
+
+
     </div>
   );
 }
@@ -296,8 +384,10 @@ function DesktopMenu() {
 function MobileMenu() {
   const [activeCategory, setActiveCategory] = useState("featured");
   const { items: cart, addItem } = useCartStore();
+  const { showToast } = useToast();
   const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
   const cartTotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const { activeCustomization, getCustomizations, openCustomization, closeCustomization, toggleCustomization, getItemPrice, getItemCustomizations } = useCustomization();
 
   const items = MENU_ITEMS_MAP[activeCategory] || [];
 
@@ -328,21 +418,142 @@ function MobileMenu() {
         ))}
       </div>
 
-      {/* Item Grid */}
-      <div className="px-4">
-        <div className="grid grid-cols-2 gap-3">
-          {items.map((item) => (
-            <MenuItemCard
-              key={item.id}
-              item={item}
-              onAdd={() => addItem({ id: item.id, name: item.name, description: item.desc, price: item.price, quantity: 1, category: (activeCategory === "featured" ? "specialties" : activeCategory) as "tacos" | "burritos" | "specialties" | "sides" | "drinks" })}
-            />
-          ))}
+        {/* Item Grid */}
+        <div className="px-4">
+          <div className="grid grid-cols-2 gap-3">
+            {items.map((item) => (
+              <MenuItemCard
+                key={item.id}
+                item={item}
+                onAdd={() => addItem({ id: item.id, name: item.name, description: item.desc, price: item.price, quantity: 1, category: (activeCategory === "featured" ? "specialties" : activeCategory) as "tacos" | "burritos" | "specialties" | "sides" | "drinks" })}
+                openCustomization={openCustomization}
+                getCustomizations={getCustomizations}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Cart Sticky Bar */}
+        {cart.length > 0 && (
+          <div className="fixed bottom-[88px] left-0 right-0 z-50 flex items-center justify-between px-4 py-3 bg-[#1E192B]/60 backdrop-blur-xl rounded-t-[2rem] shadow-[0_-10px_30px_rgba(109,40,255,0.15)] md:hidden">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-white">shopping_cart</span>
+              <span className="w-5 h-5 flex items-center justify-center bg-primary-container text-white text-[9px] font-label font-bold rounded-full">
+                {cartCount}
+              </span>
+            </div>
+            <div className="flex-1 text-center text-white font-label">
+              {cartCount} ITEM{cartCount !== 1 ? 'S' : ''} · ${cartTotal.toFixed(2)}
+            </div>
+            <Link href="/checkout" className="px-3 py-1.5 rounded-full bg-secondary-container text-white font-label font-bold text-xs flex items-center gap-2">
+              Review Order
+              <span className="material-symbols-outlined text-xs">arrow_forward</span>
+            </Link>
+          </div>
+        )}
+
+        {/* Bottom Bar */}
+        <MobileBottomBar />
+    </div>
+  );
+}
+
+
+
+// ── Main Menu Page ────────────────────────────────────────────────────────────
+// ── Customization Modal ─────────────────────────────────────────────────────
+function CustomizationModal({ 
+  itemId, 
+  itemName, 
+  basePrice, 
+  onClose, 
+  onAddToOrder,
+  getCustomizations,
+  getItemCustomizations,
+  toggleCustomization
+}: { 
+  itemId: string; 
+  itemName: string; 
+  basePrice: number; 
+  onClose: () => void; 
+  onAddToOrder: () => void;
+  getCustomizations: (itemId: string) => any[];
+  getItemCustomizations: (itemId: string) => any[];
+  toggleCustomization: (itemId: string, customization: any) => void;
+}) {
+  const customizations = getCustomizations(itemId);
+  const selectedCustomizations = getItemCustomizations(itemId);
+  const modifierTotal = selectedCustomizations.reduce((sum: number, c: any) => sum + c.price, 0);
+  const finalPrice = basePrice + modifierTotal;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end bg-black/40 backdrop-blur-lg">
+      <div className="w-full max-w-md mx-4 mb-10">
+        <div className="bg-surface-container-low rounded-xl border border-outline/10 shadow-2xl">
+          <div className="flex items-center justify-between p-4 border-b border-outline/10">
+            <h3 className="font-headline font-bold text-white text-lg">{itemName}</h3>
+            <button onClick={onClose} className="text-[#CBC3DA] hover:text-white">
+              <span className="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          
+          <div className="p-4">
+            <div className="mb-4">
+              <p className="text-xs font-label font-bold text-[#CBC3DA] uppercase tracking-widest">BASE PRICE</p>
+              <p className="font-headline font-black text-white text-2xl">${basePrice.toFixed(2)}</p>
+            </div>
+            
+            {customizations.length > 0 && (
+              <>
+                <p className="mb-2 font-label font-bold text-white text-sm uppercase tracking-widest">CUSTOMIZE</p>
+                <div className="space-y-2">
+                  {customizations.map((customization: any) => {
+                    const isSelected = selectedCustomizations.some((c: any) => c.id === customization.id);
+                    return (
+                      <label 
+                        key={customization.id} 
+                        onClick={() => toggleCustomization(itemId, customization)}
+                        className="flex items-center justify-between bg-surface-container rounded-full px-3 py-1.5 transition-colors hover:bg-primary-container/20 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-sm text-white">{customization.type === "add" ? "add" : "remove"}</span>
+                          <span className="flex-1">{customization.name}</span>
+                          {customization.price > 0 && (
+                            <span className="text-xs text-[#948DA3]">+${customization.price.toFixed(2)}</span>
+                          )}
+                        </div>
+                        {isSelected && (
+                          <span className="material-symbols-outlined text-sm text-white">check</span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+            
+            <div className="mt-4 pt-3 border-t border-outline/10">
+              <p className="mb-2 font-label font-bold text-white text-sm uppercase tracking-widest">MODIFIER TOTAL</p>
+              <p className="font-headline font-black text-white text-xl">${modifierTotal.toFixed(2)}</p>
+            </div>
+            
+            <div className="mt-4 pt-3 border-t border-outline/10">
+              <p className="mb-2 font-label font-bold text-white text-sm uppercase tracking-widest">FINAL PRICE</p>
+              <p className="font-headline font-black text-white text-2xl">${finalPrice.toFixed(2)}</p>
+            </div>
+          </div>
+          
+          <div className="p-4">
+            <button
+              onClick={onAddToOrder}
+              className="w-full py-3 rounded-full bg-gradient-to-br from-secondary-container to-secondary text-white font-headline font-black text-base uppercase tracking-widest flex items-center justify-center gap-2 hover:shadow-[0_10px_30px_rgba(244,98,22,0.4)] transition-all"
+            >
+              Add to Order
+              <span className="material-symbols-outlined">arrow_forward</span>
+            </button>
+          </div>
         </div>
       </div>
-
-      {/* Bottom Bar */}
-      <MobileBottomBar />
     </div>
   );
 }

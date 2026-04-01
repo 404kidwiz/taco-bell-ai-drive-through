@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { CartItem } from '../types';
 
 interface CartStore {
@@ -10,17 +10,36 @@ interface CartStore {
   clearCart: () => void;
 }
 
+// Migration functions for future schema updates
+const migrations: Record<number, (state: any) => any> = {
+  0: (state) => {
+    // v0 → v1: Add options field to CartItem if missing
+    if (state?.items) {
+      return {
+        ...state,
+        items: state.items.map((item: CartItem) => ({
+          ...item,
+          options: item.options ?? [],
+        })),
+      };
+    }
+    return state;
+  },
+};
+
 export const useCartStore = create<CartStore>()(
   persist(
     (set) => ({
       items: [],
       addItem: (item) =>
         set((state) => {
-          const existing = state.items.find((i) => i.id === item.id);
+          const existing = state.items.find((i) => i.id === item.id && JSON.stringify(i.options) === JSON.stringify(item.options));
           if (existing) {
             return {
               items: state.items.map((i) =>
-                i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
+                i.id === item.id && JSON.stringify(i.options) === JSON.stringify(item.options)
+                  ? { ...i, quantity: i.quantity + 1 }
+                  : i
               ),
             };
           }
@@ -40,6 +59,18 @@ export const useCartStore = create<CartStore>()(
     }),
     {
       name: 'taco-bell-cart',
+      storage: createJSONStorage(() => localStorage),
+      version: 1,
+      migrate: (persistedState: any, version: number): any => {
+        let state = persistedState;
+        // Run all migrations from current version to latest
+        for (let v = version; v < 1; v++) {
+          if (migrations[v]) {
+            state = migrations[v](state);
+          }
+        }
+        return state;
+      },
     }
   )
 );

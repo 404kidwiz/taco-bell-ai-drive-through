@@ -15,6 +15,7 @@ module.exports = {
         'surface-container': '#221d2f',
         'surface-container-high': '#2c273a',
         'surface-container-highest': '#373245',
+        'surface-container-lowest': '#0d091a',
         'surface-variant': '#373245',
         'surface-bright': '#3c364a',
         // Primary - Lavender Signal

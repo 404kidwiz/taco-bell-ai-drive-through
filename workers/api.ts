@@ -22,6 +22,8 @@ interface CreateOrderBody {
   total: number;
   specialInstructions?: string;
   customerPhone?: string;
+  transcript?: string; // Voice transcript for AI accuracy tracking
+  restaurant?: "taco-bell" | "orderflow-pizza"; // Which restaurant the order is for
 }
 
 interface UpdateStatusBody {
@@ -29,7 +31,6 @@ interface UpdateStatusBody {
 }
 
 interface Env {
-  DB: R2Bucket;
   TURSO_DATABASE_URL?: string;
   TURSO_AUTH_TOKEN?: string;
 }
@@ -62,9 +63,10 @@ function getDb(env: Env) {
 }
 
 // ─── SMS (CallMeBot — free, no account) ──────────────────────────────────────
-async function sendSMS(phone: string, orderNumber: number, total: number) {
+async function sendSMS(phone: string, orderNumber: number, total: number, restaurant?: string) {
   if (!phone) return;
-  const msg = `🌮 Your Taco Bell order #${orderNumber} ($${total.toFixed(2)}) is confirmed! We'll have it ready soon.`;
+  const brand = restaurant === "orderflow-pizza" ? "🍕 OrderFlow Pizza" : "🌮 Taco Bell";
+  const msg = `Your ${brand} order #${orderNumber} ($${total.toFixed(2)}) is confirmed! We'll have it ready soon.`;
   try {
     await fetch(
       `https://api.callmebot.com/sms.php?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(msg)}&user=anonymous`
@@ -93,12 +95,12 @@ function errorJson(message: string, status = 400) {
 }
 
 // ─── Route Handler ─────────────────────────────────────────────────────────────
-async function handleRoute(path: string, method: string, body: unknown, env: Env) {
+async function handleRoute(path: string, method: string, body: unknown, env: Env, url: URL) {
   const db = getDb(env);
 
   // POST /api/orders — create order
   if (path === "/api/orders" && method === "POST") {
-    const { items, total, specialInstructions, customerPhone } = body as CreateOrderBody;
+    const { items, total, specialInstructions, customerPhone, transcript, restaurant } = body as CreateOrderBody;
     if (!items?.length || typeof total !== "number") {
       return errorJson("items[] and total are required");
     }
@@ -127,21 +129,40 @@ async function handleRoute(path: string, method: string, body: unknown, env: Env
 
     await db.insert(orders).values(newOrder);
 
-    // Send SMS in background (don't await)
-    if (customerPhone) {
-      sendSMS(customerPhone, nextOrderNumber, total).catch(() => {});
+    // Store transcript if provided (separate table or append to order)
+    if (transcript) {
+      console.log(`[Transcript] Order #${nextOrderNumber}: ${transcript}`);
     }
 
-    // Broadcast to SSE clients
-    broadcastSSE({ type: "new", data: { ...newOrder, items: JSON.parse(newOrder.items) } });
+    // Send SMS in background (don't await)
+    if (customerPhone) {
+      sendSMS(customerPhone, nextOrderNumber, total, restaurant).catch(() => {});
+    }
 
-    return json({ success: true, order: { ...newOrder, items: items } });
+    // Smart AI upselling — suggest complementary items
+    const upsellSuggestions = getUpsellSuggestions(items);
+
+    // Broadcast to SSE clients with upsell data
+    broadcastSSE({
+      type: "new",
+      data: {
+        ...newOrder,
+        items: JSON.parse(newOrder.items),
+        upsell: upsellSuggestions,
+        transcript: transcript ?? null,
+      },
+    });
+
+    return json({
+      success: true,
+      order: { ...newOrder, items },
+      upsell: upsellSuggestions,
+      eta: calculateETA(1), // Default ETA for new order
+    });
   }
 
   // GET /api/orders — list active orders
   if (path === "/api/orders" && method === "GET") {
-    const url = new URL("https://example.com" + path);
-    // Parse status from query
     const activeOrders = await db
       .select()
       .from(orders)
@@ -156,14 +177,16 @@ async function handleRoute(path: string, method: string, body: unknown, env: Env
     return json({ orders: result });
   }
 
-  // GET /api/orders/history — completed orders
+  // GET /api/orders/history — completed orders (must be before :id catch-all)
   if (path === "/api/orders/history" && method === "GET") {
+    const limit = parseInt(url.searchParams.get("limit") || "50", 10);
+
     const completedOrders = await db
       .select()
       .from(orders)
       .where(eq(orders.status, "completed"))
       .orderBy(desc(orders.updatedAt))
-      .limit(50);
+      .limit(Math.min(limit, 100));
 
     const result = completedOrders.map((o) => ({
       ...o,
@@ -173,36 +196,7 @@ async function handleRoute(path: string, method: string, body: unknown, env: Env
     return json({ orders: result });
   }
 
-  // PATCH /api/orders/[id] — update order status
-  const patchMatch = path.match(/^\/api\/orders\/(.+)$/);
-  if (patchMatch && method === "PATCH") {
-    const orderId = patchMatch[1];
-    const { status } = body as UpdateStatusBody;
-    if (!["pending", "in-progress", "completed"].includes(status)) {
-      return errorJson("Invalid status");
-    }
-
-    const now = Date.now();
-    const updated = await db
-      .update(orders)
-      .set({ status, updatedAt: now })
-      .where(eq(orders.id, orderId))
-      .returning();
-
-    if (!updated.length) {
-      return errorJson("Order not found", 404);
-    }
-
-    const order = updated[0];
-    broadcastSSE({
-      type: "update",
-      data: { ...order, items: JSON.parse(order.items as string) },
-    });
-
-    return json({ success: true, order: { ...order, items: JSON.parse(order.items as string) } });
-  }
-
-  // GET /api/orders/stream — SSE real-time
+  // GET /api/orders/stream — SSE real-time (must be before :id catch-all)
   if (path === "/api/orders/stream" && method === "GET") {
     const stream = new ReadableStream({
       start(controller) {
@@ -242,9 +236,85 @@ async function handleRoute(path: string, method: string, body: unknown, env: Env
     });
   }
 
+  // GET /api/orders/:id — get single order (must be after /history and /stream)
+  const getOrderMatch = path.match(/^\/api\/orders\/([^/]+)$/);
+  if (getOrderMatch && method === "GET") {
+    const orderId = getOrderMatch[1];
+    const orderRows = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+
+    if (!orderRows.length) {
+      return errorJson("Order not found", 404);
+    }
+
+    const order = orderRows[0];
+    return json({
+      order: {
+        ...order,
+        items: JSON.parse(order.items as string),
+      },
+    });
+  }
+
+  // PATCH /api/orders/[id] — update order status
+  const patchMatch = path.match(/^\/api\/orders\/(.+)$/);
+  if (patchMatch && method === "PATCH") {
+    const orderId = patchMatch[1];
+    const { status } = body as UpdateStatusBody;
+    if (!["pending", "in-progress", "completed"].includes(status)) {
+      return errorJson("Invalid status");
+    }
+
+    const now = Date.now();
+    const updated = await db
+      .update(orders)
+      .set({ status, updatedAt: now })
+      .where(eq(orders.id, orderId))
+      .returning();
+
+    if (!updated.length) {
+      return errorJson("Order not found", 404);
+    }
+
+    const order = updated[0];
+    broadcastSSE({
+      type: "update",
+      data: { ...order, items: JSON.parse(order.items as string) },
+    });
+
+    return json({ success: true, order: { ...order, items: JSON.parse(order.items as string) } });
+  }
+
+  // GET /api/orders/:id/eta — real-time ETA prediction
+  const etaMatch = path.match(/^\/api\/orders\/([^/]+)\/eta$/);
+  if (etaMatch && method === "GET") {
+    const orderId = etaMatch[1];
+    const orderRows = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+
+    if (!orderRows.length) {
+      return errorJson("Order not found", 404);
+    }
+
+    const order = orderRows[0];
+    const activeCount = await db
+      .select()
+      .from(orders)
+      .where(inArray(orders.status, ["pending", "in-progress"]));
+
+    const eta = calculateETA(activeCount.length, order.status);
+    return json({ orderId, status: order.status, eta, queuePosition: activeCount.filter(o => o.createdAt <= (order as any).createdAt).length });
+  }
+
   // GET /api/analytics
   if (path === "/api/analytics" && method === "GET") {
-    const days = 7;
+    const days = parseInt(url.searchParams.get("days") || "7", 10);
     const since = Date.now() - days * 24 * 60 * 60 * 1000;
 
     const allOrders = await db
@@ -303,6 +373,54 @@ async function handleRoute(path: string, method: string, body: unknown, env: Env
   return errorJson("Not found", 404);
 }
 
+// ─── Smart AI Upselling ────────────────────────────────────────────────────────
+function getUpsellSuggestions(items: CartItem[]): CartItem[] {
+  const suggestions: CartItem[] = [];
+  const itemNames = items.map(i => i.name.toLowerCase());
+  const hasDrink = itemNames.some(n => n.includes("blast") || n.includes("pepsi") || n.includes("lemonade") || n.includes("mountain"));
+  const hasTaco = itemNames.some(n => n.includes("taco"));
+  const hasBurrito = itemNames.some(n => n.includes("burrito"));
+  const hasNacho = itemNames.some(n => n.includes("nacho"));
+  const hasQuesadilla = itemNames.some(n => n.includes("quesadilla"));
+
+  // If no drink, suggest Baja Blast
+  if (!hasDrink) {
+    suggestions.push({ id: "baja-blast", name: "Large Baja Blast", price: 2.89, quantity: 1 });
+  }
+
+  // If tacos/burritos but no nachos, suggest Nacho Fries
+  if ((hasTaco || hasBurrito) && !hasNacho) {
+    suggestions.push({ id: "nacho-fries", name: "Nacho Fries", price: 1.99, quantity: 1 });
+  }
+
+  // If quesadilla, suggest Cinnamon Twists
+  if (hasQuesadilla) {
+    suggestions.push({ id: "cinnamon-twists", name: "Cinnamon Twists", price: 1.49, quantity: 1 });
+  }
+
+  // If order is under $10, suggest Cheesy Gordita Crunch
+  const total = items.reduce((s, i) => s + i.price * i.quantity, 0);
+  if (total < 10 && !itemNames.some(n => n.includes("gordita"))) {
+    suggestions.push({ id: "gordita-crunch", name: "Cheesy Gordita Crunch", price: 4.89, quantity: 1 });
+  }
+
+  return suggestions.slice(0, 2); // Max 2 suggestions
+}
+
+// ─── ETA Prediction ────────────────────────────────────────────────────────────
+function calculateETA(activeOrders: number, status?: string): string {
+  const baseMinutes = 5;
+  const loadMultiplier = 1 + (activeOrders * 0.2);
+  const eta = Math.round(baseMinutes * loadMultiplier);
+
+  // Completed orders are ready now
+  if (status === "completed") return "Ready";
+
+  const min = Math.max(2, eta - 2);
+  const max = eta;
+  return `${min}-${max} MINS`;
+}
+
 // ─── Worker Entry Point ────────────────────────────────────────────────────────
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -330,7 +448,7 @@ export default {
     }
 
     try {
-      return await handleRoute(path, method, body, env);
+      return await handleRoute(path, method, body, env, url);
     } catch (err) {
       console.error("Worker error:", err);
       return errorJson("Internal server error", 500);

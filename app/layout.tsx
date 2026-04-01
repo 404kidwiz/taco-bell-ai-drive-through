@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import ClientInit from "./ClientInit";
 import { Providers } from "./providers";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 export const metadata: Metadata = {
   title: "Taco Bell AI Drive-Through",
@@ -26,10 +27,12 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased bg-surface-dim text-on-surface">
-        <Providers>
-          <ClientInit />
-          {children}
-        </Providers>
+        <ErrorBoundary>
+          <Providers>
+            <ClientInit />
+            {children}
+          </Providers>
+        </ErrorBoundary>
       </body>
     </html>
   );

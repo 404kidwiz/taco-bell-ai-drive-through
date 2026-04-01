@@ -1,17 +1,14 @@
 "use client";
 
 import type { Order } from "../types";
-
-const API_BASE = "/api";
+import { api } from "../lib/api";
 
 export function useOrderTracking() {
   // ─── Fetch helpers ──────────────────────────────────────────────────────────
 
   async function loadActiveOrders(): Promise<Order[]> {
     try {
-      const res = await fetch(`${API_BASE}/orders`);
-      if (!res.ok) return [];
-      const data = await res.json();
+      const data = await api.get<{ orders: Record<string, unknown>[] }>("/api/orders");
       return (data.orders ?? []).map(mapOrder);
     } catch {
       return [];
@@ -20,9 +17,7 @@ export function useOrderTracking() {
 
   async function loadCompletedOrders(limit = 50): Promise<Order[]> {
     try {
-      const res = await fetch(`${API_BASE}/orders/history`);
-      if (!res.ok) return [];
-      const data = await res.json();
+      const data = await api.get<{ orders: Record<string, unknown>[] }>("/api/orders/history");
       return (data.orders ?? []).slice(0, limit).map(mapOrder);
     } catch {
       return [];
@@ -35,31 +30,22 @@ export function useOrderTracking() {
     specialInstructions?: string;
     customerPhone?: string;
   }): Promise<Order> {
-    const res = await fetch(`${API_BASE}/orders`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) throw new Error("Failed to create order");
-    const data = await res.json();
+    const data = await api.post<{ order: Record<string, unknown> }>("/api/orders", payload);
     return mapOrder(data.order);
   }
 
   async function updateOrderStatusApi(id: string, status: Order["status"]): Promise<Order> {
-    const res = await fetch(`${API_BASE}/orders/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    if (!res.ok) throw new Error("Failed to update order");
-    const data = await res.json();
+    const data = await api.patch<{ order: Record<string, unknown> }>(`/api/orders/${id}`, { status });
     return mapOrder(data.order);
   }
 
   // ─── Mapper: API response → frontend Order ──────────────────────────────────
 
   function mapOrder(doc: Record<string, unknown>): Order {
-    const items = typeof doc.items === "string" ? JSON.parse(doc.items) : doc.items;
+    const rawItems = typeof doc.items === "string"
+      ? (() => { try { return JSON.parse(doc.items); } catch { return []; } })()
+      : doc.items;
+    const items = Array.isArray(rawItems) ? rawItems : [];
     return {
       id: doc.id as string,
       orderNumber: doc.orderNumber as number,

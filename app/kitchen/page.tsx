@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Order } from "../types";
 import Nav from "@/components/Nav";
+import { api } from "../lib/api";
 
 function getTimerColor(seconds: number): string {
   if (seconds < 120) return "text-green-400";
@@ -168,20 +169,17 @@ export default function KitchenPage() {
 
   const loadOrders = useCallback(async () => {
     try {
-      const [activeRes, completedRes] = await Promise.all([
-        fetch("/api/orders"),
-        fetch("/api/orders/history"),
+      const [activeData, completedData] = await Promise.all([
+        api.get<{ orders: Order[] }>("/api/orders"),
+        api.get<{ orders: Order[] }>("/api/orders/history"),
       ]);
-      if (activeRes.ok) {
-        const data = await activeRes.json();
-        setOrders(data.orders ?? []);
-      }
-      if (completedRes.ok) {
-        const data = await completedRes.json();
-        setOrders((prev) => [...prev.filter((o) => o.status !== "completed"), ...(data.orders ?? [])]);
-      }
+      const allOrders = [
+        ...(activeData.orders ?? []),
+        ...(completedData.orders ?? []).filter((o) => o.status === "completed"),
+      ];
+      setOrders(allOrders);
     } catch {
-      // keep stale data
+      // keep stale data — api wrapper handles retry
     } finally {
       setIsLoading(false);
     }
@@ -189,7 +187,7 @@ export default function KitchenPage() {
 
   useEffect(() => {
     loadOrders();
-    const es = new EventSource("/api/orders/stream");
+    const es = new EventSource(`${process.env.NEXT_PUBLIC_API_URL || "https://taco-bell-api.404kidwiz.workers.dev"}/api/orders/stream`);
     esRef.current = es;
     es.onmessage = (e) => {
       try {
@@ -202,11 +200,7 @@ export default function KitchenPage() {
 
   const handleUpdate = async (orderId: string, newStatus: Order["status"]) => {
     try {
-      await fetch(`/api/orders/${orderId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      await api.patch(`/api/orders/${orderId}`, { status: newStatus });
       setOrders((prev) =>
         prev.map((o) => o.id === orderId ? { ...o, status: newStatus, updatedAt: Date.now() } : o)
       );
