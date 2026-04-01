@@ -114,9 +114,23 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem }: UseVoiceAIOpt
     return () => {
       recognitionRef.current?.stop();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onTranscript]);
 
-  const processUserInput = (input: string) => {
+  // Sanitize user input — strip injection patterns and limit length
+  const sanitizeInput = (raw: string): string => {
+    let clean = raw.slice(0, 500); // max 500 chars
+    // Strip common prompt injection patterns
+    clean = clean.replace(/ignore\s+(previous|all|above)\s+instructions?/gi, "");
+    clean = clean.replace(/system\s*:/gi, "");
+    clean = clean.replace(/<\s*\//g, " "); // strip closing tags
+    clean = clean.replace(/(?:\\x[0-9a-f]{2}|\\u[0-9a-f]{4})/gi, ""); // strip escape sequences
+    clean = clean.trim();
+    return clean;
+  };
+
+  const processUserInput = (rawInput: string) => {
+    const input = sanitizeInput(rawInput);
     const lowerInput = input.toLowerCase();
     let response = "";
     const matchedItems = findMatchingItems(lowerInput);
@@ -175,6 +189,12 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem }: UseVoiceAIOpt
     try {
       setError(null);
       
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        setError("Voice ordering requires Chrome or Edge. Please switch browsers.");
+        return;
+      }
+      
       await navigator.mediaDevices.getUserMedia({ audio: true });
       
       if (recognitionRef.current) {
@@ -191,6 +211,7 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem }: UseVoiceAIOpt
       console.error("Failed to connect:", err);
       setError("Please allow microphone access to use voice ordering.");
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const disconnect = useCallback(() => {
