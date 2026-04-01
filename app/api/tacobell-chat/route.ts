@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { getCachedResponse, setCachedResponse, isCommonQuery } from "../../lib/response-cache";
+import { Lang } from "../../lib/translations";
 
-const SYSTEM_PROMPT = `You are the AI drive-through assistant at Taco Bell. You're fast, friendly, and efficient.
+const SYSTEM_PROMPT_BASE = `You are the AI drive-through assistant at Taco Bell. You're fast, friendly, and efficient.
 
 Personality:
 - Quick-service energy — move the line, get orders right
@@ -62,6 +63,16 @@ Rules:
 6. Never make up items that aren't on the menu
 7. If they ask for something off-menu, suggest the closest alternative`;
 
+const SYSTEM_PROMPT_ES = `
+LANGUAGE INSTRUCTION: You must respond in natural Mexican Spanish. Use authentic Mexican Spanish expressions like "¡órale!", "¡qué padre!", "¡va!", "¡mames!", "¡lámsgelo!", "¡qe onda!" — as if you're a real crew member at a Taco Bell in Mexico City or the US border. Keep it casual, energetic, and fast-paced.`;
+
+function buildSystemPrompt(lang: Lang | undefined): string {
+  if (lang === "es") {
+    return SYSTEM_PROMPT_BASE + SYSTEM_PROMPT_ES;
+  }
+  return SYSTEM_PROMPT_BASE;
+}
+
 interface Message {
   role: "user" | "assistant" | "system";
   content: string;
@@ -69,7 +80,7 @@ interface Message {
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages } = (await req.json()) as { messages: Message[] };
+    const { messages, language } = (await req.json()) as { messages: Message[]; language?: Lang };
 
     // Check cache for the last user message
     const lastUserMsg = messages.filter((m) => m.role === "user").pop();
@@ -109,7 +120,7 @@ export async function POST(req: NextRequest) {
     }
 
     const apiMessages: Message[] = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: buildSystemPrompt(language) },
       ...messages,
     ];
 
