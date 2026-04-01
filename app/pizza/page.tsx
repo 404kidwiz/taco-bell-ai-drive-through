@@ -6,6 +6,8 @@ import { Phone, PhoneCall, MessageCircle, Send, ArrowRight, Clock, CheckCircle, 
 import Link from "next/link";
 import { PIZZA_MENU_ITEMS } from "../data/pizza-menu";
 import { fetchStream } from "../lib/stream";
+import { useLanguage } from "../lib/i18n";
+import { SessionRecorder, saveRecording } from "../lib/session-recorder";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -108,6 +110,7 @@ function PhoneMockup({ messages, isTyping }: { messages: ChatMessage[]; isTyping
 }
 
 export default function PizzaPage() {
+  const { lang } = useLanguage();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
@@ -119,6 +122,33 @@ export default function PizzaPage() {
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [activeMenuCategory, setActiveMenuCategory] = useState<string>("pizza");
+  const recorderRef = useRef<SessionRecorder | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [showSaveButton, setShowSaveButton] = useState(false);
+
+  const ensureRecorder = () => {
+    if (!recorderRef.current) {
+      recorderRef.current = new SessionRecorder("pizza");
+      setIsRecording(true);
+      // Record the AI welcome message as first event
+      recorderRef.current.recordEvent(
+        "ai_response",
+        "Hey, thanks for calling OrderFlow Pizza! This is Luigi — I'm ready to take your order. What can I get started for you tonight? 🍕"
+      );
+    }
+    return recorderRef.current;
+  };
+
+  useEffect(() => {
+    const handleLeave = () => {
+      if (recorderRef.current && isRecording) {
+        const rec = recorderRef.current.stop();
+        saveRecording(rec);
+      }
+    };
+    window.addEventListener("beforeunload", handleLeave);
+    return () => { window.removeEventListener("beforeunload", handleLeave); handleLeave(); };
+  }, [isRecording]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -128,11 +158,30 @@ export default function PizzaPage() {
     const text = input.trim();
     if (!text || isTyping) return;
 
+    const rec = ensureRecorder();
+    rec.recordEvent("user_message", text);
+
     const userMsg: ChatMessage = { role: "user", content: text };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
     setInput("");
     setIsTyping(true);
+
+    // Detect order placement
+    const lowerText = text.toLowerCase();
+    const isOrderPlaced =
+      lowerText.includes("place my order") ||
+      lowerText.includes("thats all") ||
+      lowerText.includes("that's all") ||
+      lowerText.includes("order is ready") ||
+      lowerText.includes("go ahead") ||
+      lowerText.includes("place order");
+    if (isOrderPlaced) {
+      rec.recordEvent("order_placed", text);
+      recorderRef.current?.stop();
+      setIsRecording(false);
+      setShowSaveButton(true);
+    }
 
     try {
       // Show typing for 250ms for natural feel
@@ -140,13 +189,15 @@ export default function PizzaPage() {
 
       const fullText = await fetchStream(
         "/api/pizza-chat",
-        { messages: newMessages.map((m) => ({ role: m.role, content: m.content })) },
+        { messages: newMessages.map((m) => ({ role: m.role, content: m.content })), language: lang },
         (streamed) => {
           setMessages([...newMessages, { role: "assistant", content: streamed }]);
         },
       );
+      rec.recordEvent("ai_response", fullText);
       setMessages([...newMessages, { role: "assistant", content: fullText }]);
     } catch {
+      rec.recordEvent("ai_response", "Sorry, having some trouble with the line. Can you repeat that?");
       setMessages([
         ...newMessages,
         { role: "assistant", content: "Sorry, having some trouble with the line. Can you repeat that?" },
@@ -180,12 +231,33 @@ export default function PizzaPage() {
             <p className="text-[9px] text-[#948DA3] uppercase tracking-[0.15em]">AI Phone Ordering</p>
           </div>
         </div>
-        <a
-          href="tel:+17705255393"
-          className="px-3 py-1.5 rounded-lg bg-[#e63946] text-white text-xs font-bold hover:bg-[#d32f3f] transition-colors"
-        >
-          Call Now
-        </a>
+        <div className="flex items-center gap-2">
+          {isRecording && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#e63946]/20 border border-[#e63946]/30">
+              <div className="w-2 h-2 rounded-full bg-[#e63946] animate-pulse" />
+              <span className="text-[9px] font-bold uppercase tracking-widest text-[#e63946]">REC</span>
+            </div>
+          )}
+          {showSaveButton && recorderRef.current && (
+            <button
+              onClick={() => {
+                const rec = recorderRef.current!.stop();
+                saveRecording(rec);
+                setShowSaveButton(false);
+                setIsRecording(false);
+              }}
+              className="px-3 py-1.5 rounded-lg bg-[#4ade80]/20 border border-[#4ade80]/30 text-[#4ade80] text-xs font-bold hover:bg-[#4ade80]/30 transition-colors"
+            >
+              💾 Save Recording
+            </button>
+          )}
+          <a
+            href="tel:+17705255393"
+            className="px-3 py-1.5 rounded-lg bg-[#e63946] text-white text-xs font-bold hover:bg-[#d32f3f] transition-colors"
+          >
+            Call Now
+          </a>
+        </div>
       </motion.header>
 
       <div className="pt-20">
