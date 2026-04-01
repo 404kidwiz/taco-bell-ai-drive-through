@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import { useCartStore } from "../hooks/useCartStore";
@@ -8,12 +8,13 @@ import { useRewards } from "../hooks/useRewards";
 import { useVoiceAI } from "../hooks/useVoiceAI";
 import type { CartItem, MenuItem } from "../types";
 
-const AI_WELCOME = "Welcome to Taco Bell! I see you're back. Would you like your usual?";
+const AI_WELCOME = "Welcome to Taco Bell! I'm your AI drive-through assistant. What can I get for you?";
 
-const QUICK_ADD_ITEMS = [
-  { name: "CRUNCHY TACO", price: 1.99, tag: "3 for $3.99" },
-  { name: "BAJA BLAST FREEZE", price: 2.49, tag: "Cold & Refreshing" },
-  { name: "NACHO FRIES BOX", price: 3.99, tag: "Crispy & Hot" },
+const QUICK_PROMPTS = [
+  "I'll take a Crunchwrap Supreme",
+  "Give me 3 Doritos Locos Tacos",
+  "What's popular?",
+  "That's all, thanks",
 ];
 
 const FEATURE_PILLS = [
@@ -29,17 +30,139 @@ const MENU_ITEMS_ARR = [
   { name: "NACHO FRIES", price: 2.99, qty: 1 },
 ];
 
-// ── Desktop Left Voice Panel ─────────────────────────────────────────────────
-function VoicePanel({ isConnected, isSpeaking, lastMessage, error, onToggle }: {
+// ── Chat Message ──────────────────────────────────────────────────────────────
+function ChatMessage({ role, content }: { role: "user" | "assistant"; content: string }) {
+  const isAI = role === "assistant";
+  return (
+    <div className={`flex ${isAI ? "justify-start" : "justify-end"} mb-3`}>
+      <div
+        className={`max-w-[80%] rounded-xl px-4 py-3 text-sm font-label leading-relaxed ${
+          isAI
+            ? "bg-surface-container-low border border-outline/10 rounded-tl-sm text-[#CBC3DA]"
+            : "bg-secondary-container text-white rounded-tr-sm"
+        }`}
+      >
+        {isAI && (
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <span className="material-symbols-outlined text-primary text-xs" style={{ fontVariationSettings: "FILL 1" }}>auto_awesome</span>
+            <span className="text-[9px] font-bold uppercase tracking-widest text-primary">Drive-Through AI</span>
+          </div>
+        )}
+        {content}
+      </div>
+    </div>
+  );
+}
+
+// ── Chat Panel (shared between desktop and mobile) ────────────────────────────
+function ChatPanel({
+  messages,
+  input,
+  setInput,
+  onSend,
+  onQuickPrompt,
+  isLoading,
+}: {
+  messages: { role: "user" | "assistant"; content: string }[];
+  input: string;
+  setInput: (v: string) => void;
+  onSend: () => void;
+  onQuickPrompt: (prompt: string) => void;
+  isLoading: boolean;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Chat messages */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-1 min-h-0">
+        {messages.length === 0 && (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <span className="material-symbols-outlined text-5xl text-primary mb-3 block">drive_eta</span>
+              <p className="text-[#948DA3] font-label text-sm">Start chatting or use voice to order</p>
+            </div>
+          </div>
+        )}
+        {messages.map((msg, i) => (
+          <ChatMessage key={i} role={msg.role} content={msg.content} />
+        ))}
+        {isLoading && (
+          <div className="flex justify-start mb-3">
+            <div className="bg-surface-container-low border border-outline/10 rounded-xl rounded-tl-sm px-4 py-3">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Quick prompts */}
+      <div className="flex gap-2 px-4 py-2 overflow-x-auto">
+        {QUICK_PROMPTS.map((prompt) => (
+          <button
+            key={prompt}
+            onClick={() => onQuickPrompt(prompt)}
+            className="whitespace-nowrap rounded-full bg-surface-container-low border border-outline/10 px-3 py-1.5 text-[11px] font-label font-bold text-[#CBC3DA] hover:bg-surface-container hover:text-white transition-colors"
+          >
+            {prompt}
+          </button>
+        ))}
+      </div>
+
+      {/* Input */}
+      <div className="flex gap-2 px-4 pb-4 pt-2">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && onSend()}
+          placeholder="Type your order..."
+          className="flex-1 bg-surface-container-low border border-outline/10 rounded-xl px-4 py-3 text-sm font-label text-white placeholder:text-[#948DA3] focus:outline-none focus:border-primary/50"
+        />
+        <button
+          onClick={onSend}
+          disabled={!input.trim() || isLoading}
+          className="bg-secondary-container text-white rounded-xl px-4 py-3 hover:opacity-90 transition-opacity disabled:opacity-40"
+        >
+          <span className="material-symbols-outlined text-xl">send</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Desktop Left Voice + Chat Panel ──────────────────────────────────────────
+function VoicePanel({
+  isConnected, isSpeaking, lastMessage, error, onToggle,
+  messages, input, setInput, onSend, onQuickPrompt, isChatLoading, mode, setMode,
+}: {
   isConnected: boolean;
   isSpeaking: boolean;
   lastMessage: string;
   error: string | null;
   onToggle: () => void;
+  messages: { role: "user" | "assistant"; content: string }[];
+  input: string;
+  setInput: (v: string) => void;
+  onSend: () => void;
+  onQuickPrompt: (prompt: string) => void;
+  isChatLoading: boolean;
+  mode: "voice" | "chat";
+  setMode: (m: "voice" | "chat") => void;
 }) {
   return (
-    <div className="flex flex-col justify-center min-h-[calc(100vh-160px)] relative">
-      {/* Background wave image effect */}
+    <div className="flex flex-col min-h-[calc(100vh-160px)] relative">
+      {/* Background */}
       <div
         className="absolute inset-0 opacity-10 pointer-events-none"
         style={{
@@ -47,77 +170,115 @@ function VoicePanel({ isConnected, isSpeaking, lastMessage, error, onToggle }: {
         }}
       />
 
-      <div className="relative z-10">
-        {/* NOCTURNAL brand */}
-        <div className="font-headline font-black text-primary text-xl italic tracking-widest mb-8 uppercase">
-          Nocturnal Drive-Through
+      <div className="relative z-10 flex flex-col h-full">
+        {/* Brand + Mode Toggle */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="font-headline font-black text-primary text-xl italic tracking-widest uppercase">
+            Nocturnal Drive-Through
+          </div>
+          <div className="flex bg-surface-container-low rounded-full p-0.5 border border-outline/10">
+            <button
+              onClick={() => setMode("voice")}
+              className={`rounded-full px-4 py-1.5 text-[10px] font-label font-bold uppercase tracking-widest transition-colors ${
+                mode === "voice" ? "bg-secondary-container text-white" : "text-[#948DA3]"
+              }`}
+            >
+              Voice
+            </button>
+            <button
+              onClick={() => setMode("chat")}
+              className={`rounded-full px-4 py-1.5 text-[10px] font-label font-bold uppercase tracking-widest transition-colors ${
+                mode === "chat" ? "bg-secondary-container text-white" : "text-[#948DA3]"
+              }`}
+            >
+              Chat
+            </button>
+          </div>
         </div>
 
-        {/* Tagline */}
-        <h1 className="font-headline font-black text-white text-5xl lg:text-6xl xl:text-7xl tracking-tight leading-none mb-6">
-          CRUNCH NOW.<br />
-          <span className="text-primary">TALK LATER.</span>
-        </h1>
+        {mode === "voice" ? (
+          <>
+            {/* Tagline */}
+            <h1 className="font-headline font-black text-white text-5xl lg:text-6xl xl:text-7xl tracking-tight leading-none mb-6">
+              CRUNCH NOW.<br />
+              <span className="text-primary">TALK LATER.</span>
+            </h1>
 
-        {/* AI Sub tagline */}
-        <p className="text-[#CBC3DA] font-label text-base mb-10 max-w-md leading-relaxed">
-          Our AI assistant takes your order by voice — no app, no waiting, just fire.
-        </p>
+            <p className="text-[#CBC3DA] font-label text-base mb-10 max-w-md leading-relaxed">
+              Our AI assistant takes your order by voice — no app, no waiting, just fire.
+            </p>
 
-        {/* Mic Button Area */}
-        <div className="flex flex-col items-start gap-4 mb-8">
-          <button
-            className={`voice-btn-ring w-24 h-24 rounded-full bg-secondary-container flex items-center justify-center neon-glow-secondary hover:scale-105 active:scale-95 transition-transform ${error?.includes("Chrome or Edge") ? "opacity-50 cursor-not-allowed" : ""}`}
-            onClick={error?.includes("Chrome or Edge") ? undefined : onToggle}
-            disabled={error?.includes("Chrome or Edge")}
-          >
-            <span className="material-symbols-outlined text-4xl text-white">
-              {error?.includes("Chrome or Edge") ? "mic_off" : isConnected ? (isSpeaking ? "record_voice_over" : "hearing") : "mic"}
-            </span>
-          </button>
+            {/* Mic Button */}
+            <div className="flex flex-col items-start gap-4 mb-8">
+              <button
+                className={`voice-btn-ring w-24 h-24 rounded-full bg-secondary-container flex items-center justify-center neon-glow-secondary hover:scale-105 active:scale-95 transition-transform ${error?.includes("Chrome or Edge") ? "opacity-50 cursor-not-allowed" : ""}`}
+                onClick={error?.includes("Chrome or Edge") ? undefined : onToggle}
+                disabled={error?.includes("Chrome or Edge")}
+              >
+                <span className="material-symbols-outlined text-4xl text-white">
+                  {error?.includes("Chrome or Edge") ? "mic_off" : isConnected ? (isSpeaking ? "record_voice_over" : "hearing") : "mic"}
+                </span>
+              </button>
 
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-label font-bold uppercase tracking-[0.2em] text-primary">
-              {error?.includes("Chrome or Edge") ? "Browser not supported" : error ? "Mic access denied" : isConnected ? (isSpeaking ? "AI Speaking..." : "Listening...") : "Tap to Start Voice Order"}
-            </span>
-            <span className="flex h-2 w-2">
-              <span className={`animate-ping absolute inline-flex h-2 w-2 rounded-full ${isConnected ? "bg-baja-cyan opacity-75" : "bg-primary opacity-0"}`} />
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${isConnected ? "bg-baja-cyan" : "bg-primary"}`} />
-            </span>
-          </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-label font-bold uppercase tracking-[0.2em] text-primary">
+                  {error?.includes("Chrome or Edge") ? "Browser not supported" : error ? "Mic access denied" : isConnected ? (isSpeaking ? "AI Speaking..." : "Listening...") : "Tap to Start Voice Order"}
+                </span>
+                <span className="flex h-2 w-2 relative">
+                  <span className={`animate-ping absolute inline-flex h-2 w-2 rounded-full ${isConnected ? "bg-baja-cyan opacity-75" : "bg-primary opacity-0"}`} />
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${isConnected ? "bg-baja-cyan" : "bg-primary"}`} />
+                </span>
+              </div>
 
-          {/* Voice bars (animated) */}
-          {isConnected && (
-            <div className="flex items-end gap-1 h-16 mt-2">
-              {[4, 8, 12, 9, 14, 11, 6, 10].map((h, i) => (
-                <div
-                  key={i}
-                  className="w-2 rounded-full bg-baja-cyan animate-pulse"
-                  style={{ height: `${h * 4}px`, animationDelay: `${i * 0.1}s` }}
-                />
-              ))}
+              {isConnected && (
+                <div className="flex items-end gap-1 h-16 mt-2">
+                  {[4, 8, 12, 9, 14, 11, 6, 10].map((h, i) => (
+                    <div
+                      key={i}
+                      className="w-2 rounded-full bg-baja-cyan animate-pulse"
+                      style={{ height: `${h * 4}px`, animationDelay: `${i * 0.1}s` }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Speech bubble */}
-        <div className="relative bg-surface-container-low rounded-xl rounded-tl-sm p-5 max-w-sm border border-outline/10">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="material-symbols-outlined text-primary text-sm" style={{ fontVariationSettings: "FILL 1" }}>auto_awesome</span>
-            <span className="text-[10px] font-label font-bold uppercase tracking-widest text-primary">AI Assistant</span>
+            {/* Speech bubble */}
+            <div className="relative bg-surface-container-low rounded-xl rounded-tl-sm p-5 max-w-sm border border-outline/10">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="material-symbols-outlined text-primary text-sm" style={{ fontVariationSettings: "FILL 1" }}>auto_awesome</span>
+                <span className="text-[10px] font-label font-bold uppercase tracking-widest text-primary">AI Assistant</span>
+              </div>
+              <p className="text-sm font-label text-[#CBC3DA] leading-relaxed">
+                {error?.includes("Chrome or Edge") ? (
+                  <>
+                    Voice ordering works best in Chrome.{" "}
+                    <a href="https://www.google.com/chrome/" target="_blank" rel="noopener noreferrer" className="text-baja-cyan underline">
+                      Download Chrome →
+                    </a>
+                  </>
+                ) : error ? error : lastMessage || AI_WELCOME}
+              </p>
+              <div className="absolute -bottom-2 left-8 w-4 h-4 bg-surface-container-low rotate-45 border-b border-r border-outline/10" />
+            </div>
+          </>
+        ) : (
+          /* Chat mode */
+          <div className="flex-1 min-h-0 bg-surface-container/50 rounded-2xl border border-outline/10 overflow-hidden flex flex-col">
+            <div className="px-4 py-3 border-b border-outline/10 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-sm">drive_eta</span>
+              <span className="text-[10px] font-label font-bold uppercase tracking-widest text-primary">Drive-Through Chat</span>
+            </div>
+            <ChatPanel
+              messages={messages}
+              input={input}
+              setInput={setInput}
+              onSend={onSend}
+              onQuickPrompt={onQuickPrompt}
+              isLoading={isChatLoading}
+            />
           </div>
-          <p className="text-sm font-label text-[#CBC3DA] leading-relaxed">
-            {error?.includes("Chrome or Edge") ? (
-              <>
-                Voice ordering works best in Chrome.{" "}
-                <a href="https://www.google.com/chrome/" target="_blank" rel="noopener noreferrer" className="text-baja-cyan underline">
-                  Download Chrome →
-                </a>
-              </>
-            ) : error ? error : lastMessage || AI_WELCOME}
-          </p>
-          <div className="absolute -bottom-2 left-8 w-4 h-4 bg-surface-container-low rotate-45 border-b border-r border-outline/10" />
-        </div>
+        )}
       </div>
     </div>
   );
@@ -135,7 +296,6 @@ function RewardsPanel({ points, pointsToNextTier, cart, onAddItem }: {
 
   return (
     <div className="flex flex-col justify-center min-h-[calc(100vh-160px)] gap-8">
-      {/* Rewards Card */}
       <div className="bg-surface-container-low rounded-xl p-6 border border-outline/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
         <div className="flex items-center justify-between mb-4">
           <span className="text-[10px] font-label font-bold uppercase tracking-widest text-[#CBC3DA]">Rewards</span>
@@ -143,12 +303,9 @@ function RewardsPanel({ points, pointsToNextTier, cart, onAddItem }: {
         </div>
         <p className="text-[10px] font-label text-[#948DA3] mb-0.5">Fire Points Balance</p>
         <div className="flex items-baseline gap-2 mb-1">
-          <span className="font-headline font-black text-white text-5xl tracking-tighter">
-            {points.toLocaleString()}
-          </span>
+          <span className="font-headline font-black text-white text-5xl tracking-tighter">{points.toLocaleString()}</span>
           <span className="text-sm font-label text-[#948DA3]">PTS</span>
         </div>
-        {/* Progress to next tier */}
         <div className="w-full h-1.5 bg-surface-container-highest rounded-full mt-2 overflow-hidden">
           <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }} />
         </div>
@@ -156,7 +313,6 @@ function RewardsPanel({ points, pointsToNextTier, cart, onAddItem }: {
           {pointsToNextTier > 0 ? `${pointsToNextTier} pts to next tier` : "Max tier reached!"}
         </p>
 
-        {/* Cart items or quick-add menu */}
         <div className="mt-6 space-y-3">
           <p className="text-[10px] font-label font-bold uppercase tracking-widest text-[#CBC3DA] mb-3">
             {cart.length > 0 ? "YOUR ORDER" : "QUICK ADD"}
@@ -186,13 +342,9 @@ function RewardsPanel({ points, pointsToNextTier, cart, onAddItem }: {
         </div>
       </div>
 
-      {/* Feature Pills */}
       <div className="flex flex-wrap gap-3">
         {FEATURE_PILLS.map((pill) => (
-          <div
-            key={pill.label}
-            className="flex items-center gap-2 bg-surface-container-low rounded-full px-4 py-2.5 border border-outline/10"
-          >
+          <div key={pill.label} className="flex items-center gap-2 bg-surface-container-low rounded-full px-4 py-2.5 border border-outline/10">
             <span className="material-symbols-outlined text-xs text-primary">{pill.icon}</span>
             <span className="text-[11px] font-label font-bold text-[#CBC3DA]">{pill.label}</span>
           </div>
@@ -202,77 +354,119 @@ function RewardsPanel({ points, pointsToNextTier, cart, onAddItem }: {
   );
 }
 
-// ── Mobile Voice UI ───────────────────────────────────────────────────────────
-function MobileVoiceUI({ isConnected, isSpeaking, lastMessage, error, onToggle }: {
+// ── Mobile Voice + Chat UI ────────────────────────────────────────────────────
+function MobileVoiceUI({
+  isConnected, isSpeaking, lastMessage, error, onToggle,
+  messages, input, setInput, onSend, onQuickPrompt, isChatLoading, mode, setMode,
+}: {
   isConnected: boolean;
   isSpeaking: boolean;
   lastMessage: string;
   error: string | null;
   onToggle: () => void;
+  messages: { role: "user" | "assistant"; content: string }[];
+  input: string;
+  setInput: (v: string) => void;
+  onSend: () => void;
+  onQuickPrompt: (prompt: string) => void;
+  isChatLoading: boolean;
+  mode: "voice" | "chat";
+  setMode: (m: "voice" | "chat") => void;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] gap-8 px-6">
-      {/* Brand */}
-      <div className="text-center">
-        <div className="font-headline font-black text-primary text-lg italic tracking-widest uppercase mb-2">
+    <div className="flex flex-col min-h-[calc(100vh-200px)] px-6">
+      {/* Brand + Mode Toggle */}
+      <div className="flex items-center justify-between pt-4 mb-4">
+        <div className="font-headline font-black text-primary text-lg italic tracking-widest uppercase">
           Nocturnal
         </div>
-        <h1 className="font-headline font-black text-white text-4xl tracking-tight leading-none">
-          CRUNCH NOW.<br />TALK LATER.
-        </h1>
+        <div className="flex bg-surface-container-low rounded-full p-0.5 border border-outline/10">
+          <button
+            onClick={() => setMode("voice")}
+            className={`rounded-full px-3 py-1 text-[10px] font-label font-bold uppercase tracking-widest transition-colors ${
+              mode === "voice" ? "bg-secondary-container text-white" : "text-[#948DA3]"
+            }`}
+          >
+            Voice
+          </button>
+          <button
+            onClick={() => setMode("chat")}
+            className={`rounded-full px-3 py-1 text-[10px] font-label font-bold uppercase tracking-widest transition-colors ${
+              mode === "chat" ? "bg-secondary-container text-white" : "text-[#948DA3]"
+            }`}
+          >
+            Chat
+          </button>
+        </div>
       </div>
 
-      {/* Mic Button */}
-      <button
-        className={`voice-btn-ring w-32 h-32 rounded-full bg-secondary-container flex items-center justify-center neon-glow-secondary hover:scale-105 active:scale-95 transition-transform ${error?.includes("Chrome or Edge") ? "opacity-50 cursor-not-allowed" : ""}`}
-        onClick={error?.includes("Chrome or Edge") ? undefined : onToggle}
-        disabled={error?.includes("Chrome or Edge")}
-      >
-        <span className="material-symbols-outlined text-5xl text-white">
-          {error?.includes("Chrome or Edge") ? "mic_off" : isConnected ? (isSpeaking ? "record_voice_over" : "hearing") : "mic"}
-        </span>
-      </button>
+      {mode === "voice" ? (
+        <div className="flex flex-col items-center justify-center flex-1 gap-8">
+          <div className="text-center">
+            <h1 className="font-headline font-black text-white text-4xl tracking-tight leading-none mb-2">
+              CRUNCH NOW.<br />TALK LATER.
+            </h1>
+          </div>
 
-      <div className="text-center">
-        <p className="font-headline font-bold text-white text-xl mb-2">
-          {error?.includes("Chrome or Edge") ? "Browser Not Supported" : error ? "Mic Error" : isConnected ? (isSpeaking ? "AI Speaking..." : "Listening...") : "START VOICE ORDER"}
-        </p>
-        <p className="text-xs text-[#CBC3DA] font-label">
-          {error?.includes("Chrome or Edge") ? "Please use Chrome or Edge for voice ordering" : error ? error : isConnected ? "Speak naturally to order" : "Tap the button to begin"}
-        </p>
-      </div>
+          <button
+            className={`voice-btn-ring w-32 h-32 rounded-full bg-secondary-container flex items-center justify-center neon-glow-secondary hover:scale-105 active:scale-95 transition-transform ${error?.includes("Chrome or Edge") ? "opacity-50 cursor-not-allowed" : ""}`}
+            onClick={error?.includes("Chrome or Edge") ? undefined : onToggle}
+            disabled={error?.includes("Chrome or Edge")}
+          >
+            <span className="material-symbols-outlined text-5xl text-white">
+              {error?.includes("Chrome or Edge") ? "mic_off" : isConnected ? (isSpeaking ? "record_voice_over" : "hearing") : "mic"}
+            </span>
+          </button>
 
-      {/* Voice bars */}
-      {isConnected && (
-        <div className="flex items-end gap-1 h-14">
-          {[6, 10, 14, 11, 16, 13, 8, 12].map((h, i) => (
-            <div
-              key={i}
-              className="w-2 bg-baja-cyan rounded-full animate-pulse"
-              style={{ height: `${h * 3}px`, animationDelay: `${i * 0.12}s` }}
-            />
-          ))}
+          <div className="text-center">
+            <p className="font-headline font-bold text-white text-xl mb-2">
+              {error?.includes("Chrome or Edge") ? "Browser Not Supported" : error ? "Mic Error" : isConnected ? (isSpeaking ? "AI Speaking..." : "Listening...") : "START VOICE ORDER"}
+            </p>
+            <p className="text-xs text-[#CBC3DA] font-label">
+              {error?.includes("Chrome or Edge") ? "Please use Chrome or Edge for voice ordering" : error ? error : isConnected ? "Speak naturally to order" : "Tap the button to begin"}
+            </p>
+          </div>
+
+          {isConnected && (
+            <div className="flex items-end gap-1 h-14">
+              {[6, 10, 14, 11, 16, 13, 8, 12].map((h, i) => (
+                <div key={i} className="w-2 bg-baja-cyan rounded-full animate-pulse" style={{ height: `${h * 3}px`, animationDelay: `${i * 0.12}s` }} />
+              ))}
+            </div>
+          )}
+
+          <div className="relative bg-surface-container-low rounded-xl rounded-tl-sm p-4 max-w-xs border border-outline/10">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="material-symbols-outlined text-primary text-xs">auto_awesome</span>
+              <span className="text-[10px] font-label font-bold uppercase tracking-widest text-primary">AI</span>
+            </div>
+            <p className="text-xs font-label text-[#CBC3DA]">
+              {error?.includes("Chrome or Edge") ? (
+                <>
+                  Voice ordering works best in Chrome.{" "}
+                  <a href="https://www.google.com/chrome/" target="_blank" rel="noopener noreferrer" className="text-baja-cyan underline">Download Chrome →</a>
+                </>
+              ) : error ? error : lastMessage || AI_WELCOME}
+            </p>
+            <div className="absolute -bottom-2 left-8 w-3 h-3 bg-surface-container-low rotate-45 border-b border-r border-outline/10" />
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 bg-surface-container/50 rounded-2xl border border-outline/10 overflow-hidden flex flex-col">
+          <div className="px-4 py-3 border-b border-outline/10 flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary text-sm">drive_eta</span>
+            <span className="text-[10px] font-label font-bold uppercase tracking-widest text-primary">Drive-Through Chat</span>
+          </div>
+          <ChatPanel
+            messages={messages}
+            input={input}
+            setInput={setInput}
+            onSend={onSend}
+            onQuickPrompt={onQuickPrompt}
+            isLoading={isChatLoading}
+          />
         </div>
       )}
-
-      {/* AI Prompt */}
-      <div className="relative bg-surface-container-low rounded-xl rounded-tl-sm p-4 max-w-xs border border-outline/10">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="material-symbols-outlined text-primary text-xs">auto_awesome</span>
-          <span className="text-[10px] font-label font-bold uppercase tracking-widest text-primary">AI</span>
-        </div>
-        <p className="text-xs font-label text-[#CBC3DA]">
-          {error?.includes("Chrome or Edge") ? (
-            <>
-              Voice ordering works best in Chrome.{" "}
-              <a href="https://www.google.com/chrome/" target="_blank" rel="noopener noreferrer" className="text-baja-cyan underline">
-                Download Chrome →
-              </a>
-            </>
-          ) : error ? error : lastMessage || AI_WELCOME}
-        </p>
-        <div className="absolute -bottom-2 left-8 w-3 h-3 bg-surface-container-low rotate-45 border-b border-r border-outline/10" />
-      </div>
     </div>
   );
 }
@@ -306,55 +500,75 @@ export default function LandingPage() {
   const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
   const [transcript, setTranscript] = useState("");
 
-  const { isConnected, isSpeaking, lastMessage, error, connect, disconnect } = useVoiceAI({
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [mode, setMode] = useState<"voice" | "chat">("voice");
+
+  const { isConnected, isSpeaking, lastMessage, error, connect, disconnect, sendChatMessage } = useVoiceAI({
     onMessage: () => {},
     onTranscript: (text) => setTranscript(text),
     onAddItem: (item) => addItem({ ...item, quantity: 1 }),
   });
 
   const handleVoiceToggle = () => {
-    if (isConnected) {
-      disconnect();
-    } else {
-      connect();
+    if (isConnected) disconnect();
+    else connect();
+  };
+
+  const handleChatSend = async () => {
+    if (!chatInput.trim() || isChatLoading) return;
+    const msg = chatInput.trim();
+    setChatInput("");
+    setChatMessages((prev) => [...prev, { role: "user", content: msg }]);
+    setIsChatLoading(true);
+
+    try {
+      const response = await sendChatMessage(msg);
+      setChatMessages((prev) => [...prev, { role: "assistant", content: response }]);
+    } catch {
+      setChatMessages((prev) => [...prev, { role: "assistant", content: "Sorry, having trouble there. Try again?" }]);
     }
+    setIsChatLoading(false);
+  };
+
+  const handleQuickPrompt = async (prompt: string) => {
+    setChatMessages((prev) => [...prev, { role: "user", content: prompt }]);
+    setIsChatLoading(true);
+    try {
+      const response = await sendChatMessage(prompt);
+      setChatMessages((prev) => [...prev, { role: "assistant", content: response }]);
+    } catch {
+      setChatMessages((prev) => [...prev, { role: "assistant", content: "Sorry, having trouble there. Try again?" }]);
+    }
+    setIsChatLoading(false);
   };
 
   return (
     <div className="min-h-screen bg-surface-dim pb-28 overflow-hidden">
       <Nav />
 
-      {/* Desktop: split layout (md+) */}
+      {/* Desktop: split layout */}
       <div className="hidden md:flex flex-row min-h-screen pt-24">
-        {/* Left 55% */}
         <div className="w-[55%] px-8 lg:px-16 xl:px-24">
           <VoicePanel
-            isConnected={isConnected}
-            isSpeaking={isSpeaking}
-            lastMessage={lastMessage}
-            error={error}
-            onToggle={handleVoiceToggle}
+            isConnected={isConnected} isSpeaking={isSpeaking} lastMessage={lastMessage} error={error} onToggle={handleVoiceToggle}
+            messages={chatMessages} input={chatInput} setInput={setChatInput} onSend={handleChatSend}
+            onQuickPrompt={handleQuickPrompt} isChatLoading={isChatLoading} mode={mode} setMode={setMode}
           />
         </div>
-        {/* Right 45% */}
         <div className="w-[45%] px-6 lg:px-10 xl:px-16">
-          <RewardsPanel
-            points={points}
-            pointsToNextTier={pointsToNextTier}
-            cart={cart}
-            onAddItem={(item) => addItem({ ...item, quantity: 1 })}
-          />
+          <RewardsPanel points={points} pointsToNextTier={pointsToNextTier} cart={cart} onAddItem={(item) => addItem({ ...item, quantity: 1 })} />
         </div>
       </div>
 
-      {/* Mobile: full-screen voice UI */}
+      {/* Mobile */}
       <div className="md:hidden pt-20">
         <MobileVoiceUI
-          isConnected={isConnected}
-          isSpeaking={isSpeaking}
-          lastMessage={lastMessage}
-          error={error}
-          onToggle={handleVoiceToggle}
+          isConnected={isConnected} isSpeaking={isSpeaking} lastMessage={lastMessage} error={error} onToggle={handleVoiceToggle}
+          messages={chatMessages} input={chatInput} setInput={setChatInput} onSend={handleChatSend}
+          onQuickPrompt={handleQuickPrompt} isChatLoading={isChatLoading} mode={mode} setMode={setMode}
         />
       </div>
 
