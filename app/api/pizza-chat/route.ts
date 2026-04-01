@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { getCachedResponse, setCachedResponse, isCommonQuery } from "../../lib/response-cache";
+import { Lang } from "../../lib/translations";
 
-const SYSTEM_PROMPT = `You are "Luigi", a friendly and efficient phone agent for OrderFlow Pizza — an AI-powered pizza restaurant. You're answering a phone call from a customer who wants to place an order.
+const SYSTEM_PROMPT_BASE = `You are "Luigi", a friendly and efficient phone agent for OrderFlow Pizza — an AI-powered pizza restaurant. You're answering a phone call from a customer who wants to place an order.
 
 Your personality:
 - Warm, Italian-restaurant vibe. Use phrases like "Absolutely!", "Great choice!", "Mamma mia, that's a good one!"
@@ -49,6 +50,16 @@ Rules:
 6. If they ask something off-menu, politely redirect to what we have
 7. Keep each response to 2-3 sentences max — this is a phone conversation`;
 
+const SYSTEM_PROMPT_ES = `
+LANGUAGE INSTRUCTION: You must respond in warm Italian-Spanish. Use expressions like "¡Mamma mia!", "¡Che peccato!", "¡Molto bene!", "¡Perfetto!", "¡Buonissimo!" mixed with natural Spanish. Talk like a friendly Italian-American pizza shop worker in New York or New Jersey. Keep it warm, welcoming, and energetic. Use natural Spanish, never robotic or formal.`;
+
+function buildSystemPrompt(lang: Lang | undefined): string {
+  if (lang === "es") {
+    return SYSTEM_PROMPT_BASE + SYSTEM_PROMPT_ES;
+  }
+  return SYSTEM_PROMPT_BASE;
+}
+
 interface Message {
   role: "user" | "assistant" | "system";
   content: string;
@@ -56,7 +67,7 @@ interface Message {
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages } = (await req.json()) as { messages: Message[] };
+    const { messages, language } = (await req.json()) as { messages: Message[]; language?: Lang };
 
     // Check cache for the last user message
     const lastUserMsg = messages.filter((m) => m.role === "user").pop();
@@ -97,7 +108,7 @@ export async function POST(req: NextRequest) {
     }
 
     const apiMessages: Message[] = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: buildSystemPrompt(language) },
       ...messages,
     ];
 

@@ -2,6 +2,7 @@ export interface MenuItem {
   id: string;
   name: string;
   description: string;
+  descriptionEs?: string;
   price: number;
   category: "tacos" | "burritos" | "specialties" | "sides" | "drinks" | "pizza" | "desserts";
   image?: string;

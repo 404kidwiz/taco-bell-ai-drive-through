@@ -15,9 +15,10 @@ interface UseVoiceAIOptions {
   onTranscript: (text: string) => void;
   onAddItem?: (item: MenuItem) => void;
   onStreamingUpdate?: (partialText: string) => void;
+  language?: "en" | "es";
 }
 
-export function useVoiceAI({ onMessage, onTranscript, onAddItem, onStreamingUpdate }: UseVoiceAIOptions) {
+export function useVoiceAI({ onMessage, onTranscript, onAddItem, onStreamingUpdate, language }: UseVoiceAIOptions) {
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastMessage, setLastMessage] = useState("");
@@ -111,6 +112,8 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem, onStreamingUpda
   }, [onMessage]);
 
   const isConnectedRef = useRef(false);
+  const languageRef = useRef(language);
+  languageRef.current = language;
 
   // Send message to LLM with streaming — for text chat mode
   const chatWithLLM = useCallback(async (userMessage: string): Promise<string> => {
@@ -119,7 +122,7 @@ export function useVoiceAI({ onMessage, onTranscript, onAddItem, onStreamingUpda
     try {
       const fullText = await fetchStream(
         "/api/tacobell-chat",
-        { messages: conversationRef.current },
+        { messages: conversationRef.current, language: languageRef.current },
         (streamed) => {
           onStreamingUpdate?.(streamed);
         },

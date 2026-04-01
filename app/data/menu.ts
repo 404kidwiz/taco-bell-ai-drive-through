@@ -6,6 +6,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "crunchy-taco",
     name: "Crunchy Taco",
     description: "Seasoned beef, lettuce, cheese in a crunchy shell",
+    descriptionEs: "Res Carne sazonada, lechuga, queso en concha crujiente",
     price: 1.79,
     category: "tacos",
     popular: true,
@@ -15,6 +16,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "soft-taco",
     name: "Soft Taco",
     description: "Seasoned beef, lettuce, cheese in a soft tortilla",
+    descriptionEs: "Res carne sazonada, lechuga, queso en tortilla suave",
     price: 1.79,
     category: "tacos",
     calories: 180
@@ -23,6 +25,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "doritos-locos",
     name: "Doritos Locos Taco",
     description: "Nacho cheese Doritos shell with seasoned beef",
+    descriptionEs: "Concha de Doritos Nacho Cheese con res sazonada",
     price: 2.19,
     category: "tacos",
     popular: true,
@@ -32,6 +35,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "chicken-soft",
     name: "Chicken Soft Taco",
     description: "Grilled chicken, lettuce, cheese, avocado ranch",
+    descriptionEs: "Pollo asado, lechuga, queso, aderezo de aguacate",
     price: 2.49,
     category: "tacos",
     calories: 190
@@ -42,6 +46,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "bean-burrito",
     name: "Bean Burrito",
     description: "Beans, red sauce, onions, cheese",
+    descriptionEs: "Frijoles, salsa roja, cebolla, queso",
     price: 1.79,
     category: "burritos",
     calories: 350
@@ -50,6 +55,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "beefy-5-layer",
     name: "Beefy 5-Layer Burrito",
     description: "Beef, beans, sour cream, cheese, nacho cheese",
+    descriptionEs: "Res, frijoles, crema agria, queso, queso nacho",
     price: 3.69,
     category: "burritos",
     popular: true,
@@ -59,6 +65,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "quesarito",
     name: "Quesarito",
     description: "Beef, rice, chipotle sauce, sour cream, cheese wrapped in quesadilla",
+    descriptionEs: "Res, arroz, salsa chipotle, crema agria, queso envuelto en quesadilla",
     price: 4.19,
     category: "burritos",
     popular: true,
@@ -68,6 +75,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "burrito-supreme",
     name: "Burrito Supreme",
     description: "Beef, beans, sour cream, tomatoes, lettuce, cheese, red sauce",
+    descriptionEs: "Res, frijoles, crema agria, tomates, lechuga, queso, salsa roja",
     price: 4.19,
     category: "burritos",
     calories: 390
@@ -78,6 +86,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "nachos-bellgrande",
     name: "Nachos BellGrande",
     description: "Chips, beans, beef, nacho cheese, sour cream, tomatoes",
+    descriptionEs: "Totopos, frijoles, res, queso nacho, crema agria, tomates",
     price: 4.99,
     category: "specialties",
     popular: true,
@@ -87,6 +96,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "mexican-pizza",
     name: "Mexican Pizza",
     description: "Two crispy shells, beans, beef, pizza sauce, cheese, tomatoes",
+    descriptionEs: "Dos conchas crujientes, frijoles, res, salsa pizza, queso, tomates",
     price: 4.99,
     category: "specialties",
     popular: true,
@@ -96,6 +106,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "chalupa-supreme",
     name: "Chalupa Supreme",
     description: "Fried chalupa shell, beef, sour cream, tomatoes, lettuce, cheese",
+    descriptionEs: "Chalupa frita, res, crema agria, tomates, lechuga, queso",
     price: 3.89,
     category: "specialties",
     calories: 350
@@ -104,6 +115,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "gordita-crunch",
     name: "Cheesy Gordita Crunch",
     description: "Crunchy taco wrapped in gordita with cheese, spicy ranch",
+    descriptionEs: "Taco crujiente envuelto en gordita con queso, rancho spicy",
     price: 3.89,
     category: "specialties",
     popular: true,
@@ -115,6 +127,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "cinnamon-twists",
     name: "Cinnamon Twists",
     description: "Crispy puffed twists dusted with cinnamon sugar",
+    descriptionEs: "Enredos crujientes espolvoreados con canela y azúcar",
     price: 1.29,
     category: "sides",
     calories: 170
@@ -123,6 +136,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "cheesy-roll-up",
     name: "Cheesy Roll Up",
     description: "Three cheese blend rolled in flour tortilla",
+    descriptionEs: "Mezcla de tres quesos enrollada en tortilla de harina",
     price: 1.29,
     category: "sides",
     calories: 180
@@ -131,6 +145,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "chips-cheese",
     name: "Chips and Nacho Cheese",
     description: "Tortilla chips with warm nacho cheese sauce",
+    descriptionEs: "Totopos con salsa tibia de queso nacho",
     price: 1.99,
     category: "sides",
     calories: 220
@@ -139,6 +154,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "pintos-cheese",
     name: "Pintos N Cheese",
     description: "Refried beans with red sauce and cheese",
+    descriptionEs: "Frijoles refritos con salsa roja y queso",
     price: 2.19,
     category: "sides",
     calories: 190
@@ -149,6 +165,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "baja-blast",
     name: "Baja Blast",
     description: "Tropical lime Mountain Dew exclusive to Taco Bell",
+    descriptionEs: "Mountain Dew de lima tropical, exclusivo de Taco Bell",
     price: 2.49,
     category: "drinks",
     popular: true,
@@ -158,6 +175,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "mtn-dew",
     name: "Mountain Dew",
     description: "Classic citrus Mountain Dew",
+    descriptionEs: "Mountain Dew clásico de citrus",
     price: 2.29,
     category: "drinks",
     calories: 290
@@ -166,6 +184,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "pepsi",
     name: "Pepsi",
     description: "Classic Pepsi cola",
+    descriptionEs: "Pepsi Cola clásica",
     price: 2.29,
     category: "drinks",
     calories: 250
@@ -174,6 +193,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: "lemonade",
     name: "Lemonade",
     description: "Refreshing lemonade",
+    descriptionEs: "Limonada refrescante",
     price: 2.29,
     category: "drinks",
     calories: 140

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Utensils, ShoppingBag, ChefHat, Phone, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import LanguageToggle from "./LanguageToggle";
 
 const tacoBellLinks = [
   { href: "#menu", label: "Menu", icon: Utensils },
@@ -96,6 +97,9 @@ export default function NavBar() {
                 {link.label}
               </a>
             ))}
+            <div className="ml-2">
+              <LanguageToggle />
+            </div>
           </div>
 
           {/* Mobile Toggle */}

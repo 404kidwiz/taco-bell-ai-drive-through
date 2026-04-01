@@ -3,6 +3,7 @@ import "./globals.css";
 import ClientInit from "./ClientInit";
 import { Providers } from "./providers";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { LanguageProvider } from "./lib/i18n";
 
 export const metadata: Metadata = {
   title: "Taco Bell AI Drive-Through",
@@ -29,8 +30,10 @@ export default function RootLayout({
       <body className="font-body antialiased bg-surface-dim text-on-surface">
         <ErrorBoundary>
           <Providers>
-            <ClientInit />
-            {children}
+            <LanguageProvider>
+              <ClientInit />
+              {children}
+            </LanguageProvider>
           </Providers>
         </ErrorBoundary>
       </body>

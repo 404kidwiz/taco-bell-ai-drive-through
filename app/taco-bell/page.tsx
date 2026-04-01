@@ -3,10 +3,12 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Nav from "@/components/Nav";
+import { useLanguage } from "../lib/i18n";
 import { useCartStore } from "../hooks/useCartStore";
 import { useRewards } from "../hooks/useRewards";
 import { useVoiceAI } from "../hooks/useVoiceAI";
 import type { CartItem, MenuItem } from "../types";
+import { SessionRecorder, saveRecording, downloadRecordingAsJson } from "../lib/session-recorder";
 
 const AI_WELCOME = "Welcome to Taco Bell! I'm your AI drive-through assistant. What can I get for you?";
 
@@ -497,6 +499,7 @@ function BottomTabBar({ cartCount }: { cartCount: number }) {
 export default function LandingPage() {
   const { items: cart, addItem } = useCartStore();
   const { points, pointsToNextTier } = useRewards();
+  const { lang } = useLanguage();
   const cartCount = cart.reduce((s, i) => s + i.quantity, 0);
   const [transcript, setTranscript] = useState("");
 
@@ -505,6 +508,28 @@ export default function LandingPage() {
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [mode, setMode] = useState<"voice" | "chat">("voice");
+  const recorderRef = useRef<SessionRecorder | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [showSaveButton, setShowSaveButton] = useState(false);
+
+  const ensureRecorder = () => {
+    if (!recorderRef.current) {
+      recorderRef.current = new SessionRecorder("taco-bell");
+      setIsRecording(true);
+    }
+    return recorderRef.current;
+  };
+
+  useEffect(() => {
+    const handleLeave = () => {
+      if (recorderRef.current && isRecording) {
+        const rec = recorderRef.current.stop();
+        saveRecording(rec);
+      }
+    };
+    window.addEventListener("beforeunload", handleLeave);
+    return () => { window.removeEventListener("beforeunload", handleLeave); handleLeave(); };
+  }, [isRecording]);
 
   const { isConnected, isSpeaking, lastMessage, error, connect, disconnect, sendChatMessage } = useVoiceAI({
     onMessage: () => {},
@@ -519,6 +544,7 @@ export default function LandingPage() {
         return [...prev, { role: "assistant" as const, content: partial }];
       });
     },
+    language: lang,
   });
 
   const handleVoiceToggle = () => {
@@ -530,22 +556,24 @@ export default function LandingPage() {
     if (!chatInput.trim() || isChatLoading) return;
     const msg = chatInput.trim();
     setChatInput("");
+    const rec = ensureRecorder();
+    rec.recordEvent("user_message", msg);
     setChatMessages((prev) => [...prev, { role: "user", content: msg }]);
     setIsChatLoading(true);
 
-    // Show typing indicator for a natural pause
     await new Promise((r) => setTimeout(r, 250));
 
     try {
       const response = await sendChatMessage(msg);
+      rec.recordEvent("ai_response", response);
       setChatMessages((prev) => {
-        // Replace streaming placeholder with final text
         if (prev.length > 0 && prev[prev.length - 1].role === "assistant") {
           return [...prev.slice(0, -1), { role: "assistant", content: response }];
         }
         return [...prev, { role: "assistant", content: response }];
       });
     } catch {
+      rec.recordEvent("ai_response", "Sorry, having trouble there. Try again?");
       setChatMessages((prev) => [...prev, { role: "assistant", content: "Sorry, having trouble there. Try again?" }]);
     }
     setIsChatLoading(false);
