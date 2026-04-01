@@ -22,6 +22,8 @@ import restaurantRouter from './routes/restaurant.js';
 import voiceRouter from './routes/voice.js';
 import analyticsRouter from './routes/analytics.js';
 import webhooksRouter from './routes/webhooks.js';
+import conversationAnalyticsRouter from './routes/conversation-analytics.js';
+import menuRouter from './routes/menu.js';
 
 // Initialize Hono app
 const app = new Hono();
@@ -55,6 +57,8 @@ app.route('/api', restaurantRouter);
 app.route('/api', voiceRouter);
 app.route('/api', analyticsRouter);
 app.route('/api', webhooksRouter);
+app.route('/api', conversationAnalyticsRouter);
+app.route('/api', menuRouter);
 
 // Root endpoint
 app.get('/', (c) => {

@@ -2,6 +2,45 @@ import { NextRequest } from "next/server";
 import { getCachedResponse, setCachedResponse, isCommonQuery } from "../../lib/response-cache";
 import { Lang } from "../../lib/translations";
 
+// Analytics tracking helpers
+const MISUNDERSTANDING_PATTERNS = [
+  "could you repeat", "say that again", "what was that", "i didn't catch",
+  "sorry", "pardon", "excuse me", "repeat that", "come again",
+  "didn't understand", "don't understand", "wrong item", "that's not what i ordered",
+];
+
+const POSITIVE_KEYWORDS = ["thanks", "thank you", "great", "perfect", "awesome", "amazing", "love", "great choice", "sounds good", "yes please", "that'll be all", "that's it", "perfect thanks", "nice"];
+const NEGATIVE_KEYWORDS = ["wrong", "never mind", "cancel", "forget it", "terrible", "hate", "worst", "disappointed", "ridiculous", "unacceptable", "i said", "not", "don't want"];
+
+export function detectMisunderstanding(aiResponse: string): boolean {
+  const lower = aiResponse.toLowerCase();
+  return MISUNDERSTANDING_PATTERNS.some(p => lower.includes(p));
+}
+
+export function detectSentiment(userMessage: string): "positive" | "negative" | "neutral" {
+  const lower = userMessage.toLowerCase();
+  const posCount = POSITIVE_KEYWORDS.filter(k => lower.includes(k)).length;
+  const negCount = NEGATIVE_KEYWORDS.filter(k => lower.includes(k)).length;
+  if (negCount > posCount) return "negative";
+  if (posCount > negCount) return "positive";
+  return "neutral";
+}
+
+export function detectUpsellAttempt(aiResponse: string): boolean {
+  const lower = aiResponse.toLowerCase();
+  return lower.includes("would you like") || lower.includes("add") || lower.includes("try") ||
+    lower.includes("suggest") || lower.includes("recommend") || lower.includes("pair with") ||
+    lower.includes("something to drink") || lower.includes("dessert") || lower.includes("garlic knots") ||
+    lower.includes("wings") || lower.includes("sides") || lower.includes("appetizer");
+}
+
+export function detectUpsellAcceptance(userMessage: string): boolean {
+  const lower = userMessage.toLowerCase();
+  const acceptPhrases = ["yes", "yeah", "sure", "okay", "add", "get", "i'll take", "yes please", "do it", "go ahead", "yep", "yup", "definitely", "that sounds good", "perfect"];
+  const rejectPhrases = ["no thanks", "that's all", "that's it", "just", "nothing else", "don't need", "i'm good", "no more", "that's enough"];
+  return acceptPhrases.some(p => lower.includes(p)) && !rejectPhrases.some(p => lower.includes(p));
+}
+
 const SYSTEM_PROMPT_BASE = `You are "Luigi", a friendly and efficient phone agent for OrderFlow Pizza — an AI-powered pizza restaurant. You're answering a phone call from a customer who wants to place an order.
 
 Your personality:
@@ -65,9 +104,19 @@ interface Message {
   content: string;
 }
 
+interface ConversationTracking {
+  conversationId?: string;
+  startTime?: number;
+  restaurantId?: string;
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { messages, language } = (await req.json()) as { messages: Message[]; language?: Lang };
+    const { messages, language, tracking } = (await req.json()) as {
+      messages: Message[];
+      language?: Lang;
+      tracking?: ConversationTracking;
+    };
 
     // Check cache for the last user message
     const lastUserMsg = messages.filter((m) => m.role === "user").pop();
@@ -112,6 +161,7 @@ export async function POST(req: NextRequest) {
       ...messages,
     ];
 
+    const responseStartTime = Date.now();
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -146,6 +196,7 @@ export async function POST(req: NextRequest) {
 
     // Stream the response, collecting full text for cache
     let fullText = "";
+    let firstTokenTime: number | null = null;
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
 
@@ -170,6 +221,9 @@ export async function POST(req: NextRequest) {
                 const json = JSON.parse(trimmed.slice(6));
                 const content = json.choices?.[0]?.delta?.content;
                 if (content) {
+                  if (firstTokenTime === null) {
+                    firstTokenTime = Date.now();
+                  }
                   fullText += content;
                   controller.enqueue(encoder.encode(content));
                 }
@@ -190,12 +244,22 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const responseLatencyMs = firstTokenTime ? firstTokenTime - responseStartTime : Date.now() - responseStartTime;
+    const isMisunderstanding = detectMisunderstanding(fullText);
+    const upsellAttempted = detectUpsellAttempt(fullText);
+
     return new Response(stream, {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
         "X-Stream": "live",
+        "X-Response-Latency-Ms": String(responseLatencyMs),
+        "X-Misunderstanding": isMisunderstanding ? "1" : "0",
+        "X-Upsell-Attempted": upsellAttempted ? "1" : "0",
+        "X-Conversation-Id": tracking?.conversationId || "",
+        "X-Start-Time": tracking?.startTime ? String(tracking.startTime) : "",
+        "X-Restaurant-Id": tracking?.restaurantId || "",
       },
     });
   } catch (error) {
